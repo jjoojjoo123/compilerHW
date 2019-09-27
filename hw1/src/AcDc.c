@@ -649,7 +649,7 @@ void checkstmt( Statement *stmt, SymbolTable * table )
     }
     else if (stmt->type == Print){
         printf("print : %s \n",stmt->stmt.variable);
-        lookup_table(table, stmt->stmt.variable);
+        //lookup_table(table, stmt->stmt.variable);
     }
     else printf("error : statement error\n");//error
 }
