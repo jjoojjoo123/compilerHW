@@ -225,7 +225,6 @@ Expression *parseValue( FILE *source )
     Token token = scanner(source);
     Expression *value = (Expression *)malloc( sizeof(Expression) );
     value->leftOperand = value->rightOperand = NULL;
-	
     switch(token.type){
         case Alphabet:
             (value->v).type = Identifier;
@@ -247,27 +246,33 @@ Expression *parseValue( FILE *source )
     return value;
 }
 
-Expression *parseExpressionTail( FILE *source, Expression *lvalue )
+Expression *parseTermTail( FILE *source, Expression *lvalue )
 {
     Token token = scanner(source);
     Expression *expr;
 	
     switch(token.type){
     	int i;
-        case PlusOp:
-            expr = (Expression *)malloc( sizeof(Expression) );
-            (expr->v).type = PlusNode;
-            (expr->v).val.op = Plus;
-            expr->leftOperand = lvalue;
-            expr->rightOperand = parseValue(source);
-            return parseExpressionTail(source, expr);
+    	case PlusOp:
+    		ungetc('+', source);
+            return lvalue;
         case MinusOp:
+            ungetc('-', source);
+            return lvalue;
+        case MulOp:
             expr = (Expression *)malloc( sizeof(Expression) );
-            (expr->v).type = MinusNode;
-            (expr->v).val.op = Minus;
+            (expr->v).type = MulNode;
+            (expr->v).val.op = Mul;
             expr->leftOperand = lvalue;
             expr->rightOperand = parseValue(source);
-            return parseExpressionTail(source, expr);
+            return parseTermTail(source, expr);
+        case DivOp:
+            expr = (Expression *)malloc( sizeof(Expression) );
+            (expr->v).type = DivNode;
+            (expr->v).val.op = Div;
+            expr->leftOperand = lvalue;
+            expr->rightOperand = parseValue(source);
+            return parseTermTail(source, expr);
         case Alphabet:
         	for (i = strlen(token.tok) - 1; i >= 0; i--)
             	ungetc(token.tok[i], source);
@@ -283,7 +288,84 @@ Expression *parseExpressionTail( FILE *source, Expression *lvalue )
     }
 }
 
-Expression *parseExpression( FILE *source, Expression *lvalue )
+Expression *parseTerm( FILE *source, Expression *lvalue )
+{
+    Token token = scanner(source);
+    Expression *expr;
+    switch(token.type){
+    	int i;
+    	case PlusOp:
+    		ungetc('+', source);
+            return lvalue;
+    	case MinusOp:
+    		ungetc('-', source);
+    		return lvalue;
+        case MulOp:
+            expr = (Expression *)malloc( sizeof(Expression) );
+            (expr->v).type = MulNode;
+            (expr->v).val.op = Mul;
+            expr->leftOperand = lvalue;
+            expr->rightOperand = parseValue(source);
+            return parseTermTail(source, expr);
+        case DivOp:
+            expr = (Expression *)malloc( sizeof(Expression) );
+            (expr->v).type = DivNode;
+            (expr->v).val.op = Div;
+            expr->leftOperand = lvalue;
+            expr->rightOperand = parseValue(source);
+            return parseTermTail(source, expr);
+        case Alphabet:
+        	for (i = strlen(token.tok) - 1; i >= 0; i--)
+            	ungetc(token.tok[i], source);
+            return lvalue;
+        case EOFsymbol:
+            return lvalue;
+        case PrintOp:
+            ungetc(token.tok[0], source);
+            return lvalue;
+        default:
+            printf("Syntax Error: Expect a numeric value or an identifier %s\n", token.tok);
+            exit(1);
+    }
+}
+
+Expression *parseExpressionTail( FILE *source, Expression *lterm )
+{
+    Token token = scanner(source);
+    Expression *expr;
+	
+    switch(token.type){
+    	int i;
+        case PlusOp:
+            expr = (Expression *)malloc( sizeof(Expression) );
+            (expr->v).type = PlusNode;
+            (expr->v).val.op = Plus;
+            expr->leftOperand = lterm;
+            expr->rightOperand = parseTerm(source, parseValue(source));
+            return parseExpressionTail(source, expr);
+        case MinusOp:
+            expr = (Expression *)malloc( sizeof(Expression) );
+            (expr->v).type = MinusNode;
+            (expr->v).val.op = Minus;
+            expr->leftOperand = lterm;
+            expr->rightOperand = parseTerm(source, parseValue(source));
+            return parseExpressionTail(source, expr);
+        case Alphabet:
+        	for (i = strlen(token.tok) - 1; i >= 0; i--)
+            	ungetc(token.tok[i], source);
+            return lterm;
+        case PrintOp:
+            ungetc(token.tok[0], source);
+            return lterm;
+        case EOFsymbol:
+            return lterm;
+        default:
+            printf("Syntax Error: Expect a numeric value or an identifier %s\n", token.tok);
+            exit(1);
+    }
+}
+
+Expression *parseExpression( FILE *source, Expression *lterm )
 {
     Token token = scanner(source);
     Expression *expr;
@@ -294,15 +376,15 @@ Expression *parseExpression( FILE *source, Expression *lvalue )
             expr = (Expression *)malloc( sizeof(Expression) );
             (expr->v).type = PlusNode;
             (expr->v).val.op = Plus;
-            expr->leftOperand = lvalue;
-            expr->rightOperand = parseValue(source);
+            expr->leftOperand = lterm;
+            expr->rightOperand = parseTerm(source, parseValue(source));
             return parseExpressionTail(source, expr);
         case MinusOp:
             expr = (Expression *)malloc( sizeof(Expression) );
             (expr->v).type = MinusNode;
             (expr->v).val.op = Minus;
-            expr->leftOperand = lvalue;
-            expr->rightOperand = parseValue(source);
+            expr->leftOperand = lterm;
+            expr->rightOperand = parseTerm(source, parseValue(source));
             return parseExpressionTail(source, expr);
         case Alphabet:
         	for (i = strlen(token.tok) - 1; i >= 0; i--)
@@ -322,15 +404,16 @@ Expression *parseExpression( FILE *source, Expression *lvalue )
 Statement parseStatement( FILE *source, Token token )
 {
     Token next_token;
-    Expression *value, *expr;
+    Expression *value, *term, *expr;
 
     switch(token.type){
         case Alphabet:
             next_token = scanner(source);
             if(next_token.type == AssignmentOp){
                 value = parseValue(source);
-                expr = parseExpression(source, value);
-                return makeAssignmentNode(token.tok, value, expr);
+                term = parseTerm(source, value);
+                expr = parseExpression(source, term);
+                return makeAssignmentNode(token.tok, value, term, expr);
             }
             else{
                 printf("Syntax Error: Expect an assignment op %s\n", next_token.tok);
@@ -405,15 +488,17 @@ Declarations *makeDeclarationTree( Declaration decl, Declarations *decls )
 }
 
 
-Statement makeAssignmentNode( char *id, Expression *v, Expression *expr_tail )
+Statement makeAssignmentNode( char *id, Expression *v, Expression *term_tail, Expression *expr_tail )
 {
     Statement stmt;
     AssignmentStatement assign;
 
     stmt.type = Assignment;
     strncpy ( assign.id, id, sizeof(assign.id) );
-    if(expr_tail == NULL)
+    if(term_tail == NULL)
         assign.expr = v;
+    else if(expr_tail == NULL)
+    	assign.expr = term_tail;
     else
         assign.expr = expr_tail;
     stmt.stmt.assign = assign;
@@ -676,6 +761,12 @@ void fprint_op( FILE *target, ValueType op )
         case PlusNode:
             fprintf(target,"+\n");
             break;
+        case MulNode:
+            fprintf(target,"*\n");
+            break;
+        case DivNode:
+            fprintf(target,"/\n");
+            break;
         default:
             fprintf(target,"Error in fprintf_op ValueType = %d\n",op);
             break;
@@ -759,12 +850,14 @@ void printTable(SymbolTable * table)
 {
 	int i;
 	printf("\n--------------------------\n");
+	printf("\n-------SymbolTable--------\n");
 	for(i = 0; i < TABLE_SIZE; i++)
 	{
 		printf("%s, %d\n", table->table[i].original_name, table->table[i].type);
 	}
 	printf("--------------------------\n");
 }
+
 
 /***************************************
   For our debug,

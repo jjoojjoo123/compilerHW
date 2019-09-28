@@ -66,6 +66,13 @@ typedef struct Value{
 }Value;
 
 
+typedef struct Term{
+    Value v;
+    struct Term *leftOperand;
+    struct Term *rightOperand;
+    DataType type;
+}Term;
+
 /* 
    The data structure of the expression tree.
    Recall how to deal with expression by tree 
@@ -126,9 +133,11 @@ Declarations *makeDeclarationTree( Declaration decl, Declarations *decls );
 Declaration parseDeclaration( FILE *source, Token token );
 Declarations *parseDeclarations( FILE *source );
 Expression *parseValue( FILE *source );
-Expression *parseExpressionTail( FILE *source, Expression *lvalue );
-Expression *parseExpression( FILE *source, Expression *lvalue );
-Statement makeAssignmentNode( char *id, Expression *v, Expression *expr_tail );
+Expression *parseTermTail( FILE *source, Expression *lvalue );
+Expression *parseTerm( FILE *source, Expression *lvalue );
+Expression *parseExpressionTail( FILE *source, Expression *lterm );
+Expression *parseExpression( FILE *source, Expression *lterm );
+Statement makeAssignmentNode( char *id, Expression *v, Expression *term_tail, Expression *expr_tail );
 Statement makePrintNode( char *id );
 Statements *makeStatementTree( Statement stmt, Statements *stmts );
 Statement parseStatement( FILE *source, Token token );
