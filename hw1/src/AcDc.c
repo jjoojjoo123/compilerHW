@@ -28,6 +28,7 @@ int main( int argc, char *argv[] )
             fclose(source);
             symtab = build(program);
             check(&program, &symtab);
+            content_folding(program);
             gencode(program, target, &symtab);
         }
     }
@@ -748,6 +749,111 @@ void check( Program *program, SymbolTable * table )
     }
 }
 
+/***********************************************************************
+  Content folding
+ ************************************************************************/
+void content_folding( Program prog )
+{
+	Statements *stmts = prog.statements;
+    Statement stmt;
+    
+    while(stmts != NULL){
+        stmt = stmts->first;
+        if(stmt.type == Assignment)
+        	fold_expr(stmt.stmt.assign.expr);
+        stmts=stmts->rest;
+    }
+}
+
+void fold_expr( Expression *expr )
+{
+	if(expr->leftOperand != NULL && expr->rightOperand != NULL){
+		Expression *left = expr->leftOperand;
+        Expression *right = expr->rightOperand;
+
+        fold_expr(left);
+        fold_expr(right);
+        
+        switch(expr->v.type){
+        	case PlusNode:
+        		if(left->v.type == IntConst && right->v.type == IntConst)
+        		{
+        			expr->v.type = IntConst;
+        			expr->v.val.ivalue = left->v.val.ivalue + right->v.val.ivalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else if(left->v.type == FloatConst && right->v.type == FloatConst)
+				{
+					expr->v.type = FloatConst;
+        			expr->v.val.fvalue = left->v.val.fvalue + right->v.val.fvalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else
+				{
+				}
+				break;
+			case MinusNode:
+        		if(left->v.type == IntConst && right->v.type == IntConst)
+        		{
+        			expr->v.type = IntConst;
+        			expr->v.val.ivalue = left->v.val.ivalue - right->v.val.ivalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else if(left->v.type == FloatConst && right->v.type == FloatConst)
+				{
+					expr->v.type = FloatConst;
+        			expr->v.val.fvalue = left->v.val.fvalue - right->v.val.fvalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else
+				{
+				}
+				break;
+			case MulNode:
+        		if(left->v.type == IntConst && right->v.type == IntConst)
+        		{
+        			expr->v.type = IntConst;
+        			expr->v.val.ivalue = left->v.val.ivalue * right->v.val.ivalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else if(left->v.type == FloatConst && right->v.type == FloatConst)
+				{
+					expr->v.type = FloatConst;
+        			expr->v.val.fvalue = left->v.val.fvalue * right->v.val.fvalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else
+				{
+				}
+				break;
+			case DivNode:
+        		if(left->v.type == IntConst && right->v.type == IntConst)
+        		{
+        			expr->v.type = IntConst;
+        			expr->v.val.ivalue = left->v.val.ivalue / right->v.val.ivalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else if(left->v.type == FloatConst && right->v.type == FloatConst)
+				{
+					expr->v.type = FloatConst;
+        			expr->v.val.fvalue = left->v.val.fvalue / right->v.val.fvalue;
+        			expr->leftOperand = NULL;
+    				expr->rightOperand = NULL;
+				}
+				else
+				{
+				}
+				break;
+    	}
+	}
+}
 
 /***********************************************************************
   Code generation

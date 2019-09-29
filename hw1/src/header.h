@@ -66,13 +66,6 @@ typedef struct Value{
 }Value;
 
 
-typedef struct Term{
-    Value v;
-    struct Term *leftOperand;
-    struct Term *rightOperand;
-    DataType type;
-}Term;
-
 /* 
    The data structure of the expression tree.
    Recall how to deal with expression by tree 
@@ -155,6 +148,8 @@ int lookup_index( SymbolTable *table, char *c );
 void checkexpression( Expression * expr, SymbolTable * table );
 void checkstmt( Statement *stmt, SymbolTable * table );
 void check( Program *program, SymbolTable * table);
+void content_folding( Program prog );
+void fold_expr( Expression *expr );
 void fprint_op( FILE *target, ValueType op );
 void fprint_expr( FILE *target, Expression *expr, SymbolTable * table );
 void gencode( Program prog, FILE * target , SymbolTable * table );
