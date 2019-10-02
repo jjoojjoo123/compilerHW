@@ -770,7 +770,13 @@ void fold_expr( Expression *expr )
 	if(expr->leftOperand != NULL){
 		Expression *left = expr->leftOperand;
 		if(expr->v.type == IntToFloatConvertNode)
+		{
 			fold_expr(left);
+			expr->v.type = FloatConst;
+			expr->v.val.fvalue = (float)left->v.val.ivalue;
+			expr->leftOperand = NULL;
+		}
+			
 			
 		else
 		{
