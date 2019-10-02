@@ -1,18 +1,16 @@
 #ifndef HEADER_H_INCLUDED
 #define HEADER_H_INCLUDED
 
-const int TABLE_SIZE = 26;
-
 /******************************************************************************************************************************************
     All enumeration literals
        TokenType : Specify the type of the token scanner returns
-	   DataType  : The data type of the declared variable
-	   StmtType  : Indicate one statement in AcDc program is print or assignment statement.
-	   ValueType : The node types of the expression tree that represents the expression on the right hand side of the assignment statement.
-	               Identifier, IntConst, FloatConst must be the leaf nodes ex: a, b, c , 1.5 , 3.
-				   PlusNode, MinusNode, MulNode, DivNode are the operations in AcDc. They must be the internal nodes.
-                   Note that IntToFloatConvertNode to represent the type coercion may appear after finishing type checking. 			  
-	   Operation : Specify all arithematic expression, including +, - , *, / and type coercion.
+     DataType  : The data type of the declared variable
+     StmtType  : Indicate one statement in AcDc program is print or assignment statement.
+     ValueType : The node types of the expression tree that represents the expression on the right hand side of the assignment statement.
+                 Identifier, IntConst, FloatConst must be the leaf nodes ex: a, b, c , 1.5 , 3.
+           PlusNode, MinusNode, MulNode, DivNode are the operations in AcDc. They must be the internal nodes.
+                   Note that IntToFloatConvertNode to represent the type coercion may appear after finishing type checking.         
+     Operation : Specify all arithematic expression, including +, - , *, / and type coercion.
 *******************************************************************************************************************************************/
 
 typedef enum TokenType { FloatDeclaration, IntegerDeclaration, PrintOp, AssignmentOp, PlusOp, MinusOp,
@@ -28,6 +26,7 @@ typedef enum Operation { Plus, Minus, Mul, Div, Assign, IntToFloatConvert } Oper
    scanning, parsing, AST, type-checking, building the symbol table, and code generation.
 *****************************************************************************************/
 
+typedef char *VarName;
 
 /* For scanner */
 typedef struct Token{
@@ -40,14 +39,14 @@ typedef struct Token{
 /* For decl production or say one declaration statement */
 typedef struct Declaration{
     DataType type;
-    char name[64];
+    VarName name;
 }Declaration;
 
 /* 
     For decls production or say all declarations. (
-	You can view it as the subtree for decls in AST,
-	or just view it as the linked list that stores 
-	all declarations. ) 
+  You can view it as the subtree for decls in AST,
+  or just view it as the linked list that stores 
+  all declarations. ) 
 */
 typedef struct Declarations{
     Declaration first;
@@ -58,7 +57,7 @@ typedef struct Declarations{
 typedef struct Value{
     ValueType type;
     union{
-        char id[64];                   /* if the node represent the access of the identifier */
+        VarName id;                /* if the node represent the access of the identifier */
         Operation op;              /* store +, -, *, /, =, type_convert */
         int ivalue;                /* for integer constant in the expression */
         float fvalue;              /* for float constant */
@@ -81,7 +80,7 @@ typedef struct Expression{
 
 /* For one assignment statement */
 typedef struct AssignmentStatement{
-    char id[64];
+    VarName id;
     Expression *expr;
     DataType type;      /* For type checking to store the type of all expression on the right. */
 }AssignmentStatement;
@@ -91,7 +90,7 @@ typedef struct AssignmentStatement{
 typedef struct Statement{
     StmtType type;
     union{
-        char variable[64];              /* print statement */
+        VarName variable;              /* print statement */
         AssignmentStatement assign;
     }stmt;
 }Statement;
@@ -108,51 +107,68 @@ typedef struct Program{
     Statements *statements;
 }Program;
 
-typedef struct IdentifierInfo{
-    DataType type;
-    char original_name[64];
-} IdentifierInfo;
-
 /* For building the symbol table */
+/*typedef struct SymbolTable{
+    DataType table[26];
+} SymbolTable;*/
+
+typedef struct NameValueTuple{
+    VarName name;
+    union{
+        DataType type;
+        VarName newname;
+    }value;
+} NameValueTuple;
+
+typedef struct NameValueTuples{
+    NameValueTuple tuple;
+    struct NameValueTuples *tuples;
+} NameValueTuples;
+
+#define HashTableSpace 100
+
 typedef struct SymbolTable{
-    IdentifierInfo table[26];
+    //used in checker to see types
+    //used in gencode to link to registers of the target language
+    int size;
+    NameValueTuples *table[HashTableSpace];
 } SymbolTable;
 
 
+void ungetstring(char *s, FILE *source);
 Token getNumericToken( FILE *source, char c );
 Token scanner( FILE *source );
 Declaration makeDeclarationNode( Token declare_type, Token identifier );
 Declarations *makeDeclarationTree( Declaration decl, Declarations *decls );
 Declaration parseDeclaration( FILE *source, Token token );
 Declarations *parseDeclarations( FILE *source );
+void constantFolding( Expression *expr );
 Expression *parseValue( FILE *source );
-Expression *parseTermTail( FILE *source, Expression *lvalue );
-Expression *parseTerm( FILE *source, Expression *lvalue );
-Expression *parseExpressionTail( FILE *source, Expression *lterm );
-Expression *parseExpression( FILE *source, Expression *lterm );
-Statement makeAssignmentNode( char *id, Expression *v, Expression *term_tail, Expression *expr_tail );
-Statement makePrintNode( char *id );
+Expression *parseFactoryTail( FILE *source, Expression *lvalue );
+Expression *parseFactory( FILE *source );
+Expression *parseExpressionTail( FILE *source, Expression *lvalue );
+Expression *parseExpression( FILE *source, Expression *lvalue );
+Statement makeAssignmentNode( VarName id, Expression *f, Expression *expr_tail );
+Statement makePrintNode( VarName id );
 Statements *makeStatementTree( Statement stmt, Statements *stmts );
 Statement parseStatement( FILE *source, Token token );
 Statements *parseStatements( FILE * source );
 Program parser( FILE *source );
-int hash(char *str);
 void InitializeTable( SymbolTable *table );
-void add_table( SymbolTable *table, char *c, DataType t );
+int hash_name( VarName n );
+NameValueTuples *makeHashNode( VarName n );
+void add_table_type( SymbolTable *table, VarName n, DataType t );
 SymbolTable build( Program program );
-void printTable(SymbolTable * table);
 void convertType( Expression * old, DataType type );
 DataType generalize( Expression *left, Expression *right );
-DataType lookup_table( SymbolTable *table, char *c );
-int lookup_index( SymbolTable *table, char *c );
+DataType lookup_table_type( SymbolTable *table, VarName n );
 void checkexpression( Expression * expr, SymbolTable * table );
 void checkstmt( Statement *stmt, SymbolTable * table );
 void check( Program *program, SymbolTable * table);
-void content_folding( Program prog );
-void fold_expr( Expression *expr );
+VarName lookup_table_newname( SymbolTable *table, VarName n );
 void fprint_op( FILE *target, ValueType op );
-void fprint_expr( FILE *target, Expression *expr, SymbolTable * table );
-void gencode( Program prog, FILE * target , SymbolTable * table );
+void fprint_expr( FILE *target, Expression *expr, SymbolTable* table );
+void gencode( Program prog, FILE * target );
 
 void print_expr( Expression *expr );
 void test_parser( FILE *source );
