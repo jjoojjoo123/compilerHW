@@ -7,6 +7,7 @@ symtab * lookup();
 symtab * ptr;
 void     insertID();
 void 	 printSymTab();
+void 	 printFreq();
 /* You need to define for all tokens in C--, here are some examples */
 #define IDENTIFIER	7
 
@@ -112,7 +113,14 @@ error    .
 {Int_constant}         {/* return INT; */ }
 {Float_constant}       {/* return FLOAT; */}
 {String_constant}		{/* return STRING; */}
-{Comment}		printf("%s\n", yytext);
+{Comment}		{
+				char* find = strchr(yytext, '\n');
+				while(find != NULL){
+					linenumber += 1;
+					find = strchr(find + 1, '\n');
+				}
+				printf("%s\n", yytext);
+				}
 {ID}            { 
 			if(strcmp(yytext, "return") == 0){
 				/* return RW_RETURN; */
@@ -164,7 +172,10 @@ error    .
 {DL_comma}      {}
 {DL_semicol}    {}
 {newline}       linenumber += 1;
-{error}         printf("ERR \n");/* return ERROR; */
+{error}         {
+				printf("ERR in line %d: %s\n", linenumber, yytext);
+				return ERROR;
+				}
 
 
 %%
@@ -177,6 +188,7 @@ main(int argc, char **argv)
    else
       yyin = stdin;
    yylex();
-   printSymTab();
+   /* printSymTab(); */
+   printFreq();
 }
 

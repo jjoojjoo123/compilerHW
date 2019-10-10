@@ -87,3 +87,48 @@ void printSymTab()
 	}
     }
 }
+
+symtab *insertOrder(symtab *root, symtab *new){
+	if(root == NULL){
+		return new;
+	}else if(strcmp(root->lexeme, new->lexeme) > 0){
+		new->front = root;
+		new->back = root->back;
+		root->back = new;
+		/*if(new->back != NULL){
+			new->back->front = new;
+		}*/
+		return new;
+	}else{
+		if(root->front == NULL){
+			root->front = new;
+			new->back = root;
+		}else{
+			root->front = insertOrder(root->front, new);
+		}
+		return root;
+	}
+}
+
+void printFreq(){
+	int i;
+	int size = 0;
+	symtab *root = NULL, *ptr = NULL;
+	for (i=0; i<TABLE_SIZE; i++){
+		symtab* symptr;
+		symptr = hash_table[i];
+		while (symptr != NULL){
+			symtab *new = (symtab*)malloc(sizeof(symtab));
+			strcpy(new->lexeme, symptr->lexeme);
+			new->line = symptr->line;
+			new->counter = symptr->counter;
+			root = insertOrder(root, new);
+			symptr=symptr->front;
+		}
+	}
+	ptr = root;
+	while(ptr != NULL){
+		printf("%s\t%d\n", ptr->lexeme, ptr->counter);
+		ptr = ptr->front;
+	}
+}
