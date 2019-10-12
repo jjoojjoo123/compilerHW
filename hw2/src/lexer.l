@@ -62,7 +62,7 @@ Int_constant {digit}+
 Float_constant ({Int_constant}\.|\.{Int_constant}|{Int_constant}\.{Int_constant})([Ee][\+\-]?{Int_constant})?
 String_constant \"([^\\\"]|\\.)*\"
 
-Comment "/*"([^*]|\*+[^/\*])*"*"*"/"
+Comment "/*"([^*]|\*+[^/\*])*"*"+"/"
 
 /* You need to define the following RE's 
 Float_constant
