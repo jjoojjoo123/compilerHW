@@ -59,7 +59,7 @@ digit    [0-9]
 ID	 {letter}({letter}|{digit}|"_")*
 WS	 [ \t]+
 Int_constant {digit}+
-Float_constant {digit}+\.|\.{digit}+|{digit}+\.{digit}+
+Float_constant ({Int_constant}\.|\.{Int_constant}|{Int_constant}\.{Int_constant})([Ee]{Int_constant})?
 String_constant \"([^\\\"]|\\.)*\"
 
 Comment "/*"([^*]|\*[^/])*"*/"
@@ -111,8 +111,8 @@ error    .
 
 {WS}            {}
 {Int_constant}         {/* return INT; */ }
-{Float_constant}       {/* return FLOAT; */}
-{String_constant}		{/* return STRING; */}
+{Float_constant}       {/* return FLOAT; */ }
+{String_constant}		{/* return STRING; */ }
 {Comment}		{
 				char* find = strchr(yytext, '\n');
 				while(find != NULL){
@@ -189,6 +189,7 @@ main(int argc, char **argv)
       yyin = stdin;
    yylex();
    /* printSymTab(); */
+   printf("\n");
    printFreq();
 }
 
