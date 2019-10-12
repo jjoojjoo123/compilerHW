@@ -59,10 +59,10 @@ digit    [0-9]
 ID	 {letter}({letter}|{digit}|"_")*
 WS	 [ \t]+
 Int_constant {digit}+
-Float_constant ({Int_constant}\.|\.{Int_constant}|{Int_constant}\.{Int_constant})([Ee]{Int_constant})?
+Float_constant ({Int_constant}\.|\.{Int_constant}|{Int_constant}\.{Int_constant})([Ee][\+\-]?{Int_constant})?
 String_constant \"([^\\\"]|\\.)*\"
 
-Comment "/*"([^*]|\*[^/])*"*/"
+Comment "/*"([^*]|\*+[^/\*])*"*"*"/"
 
 /* You need to define the following RE's 
 Float_constant
