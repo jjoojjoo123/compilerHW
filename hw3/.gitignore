@@ -1,3 +1,9 @@
-sample
-*.un~
-Makefile
+*
+
+!.gitignore
+!alloc.c
+!functions.c
+!header.h
+!lexer3.l
+!parser.y
+!gvToPng.py

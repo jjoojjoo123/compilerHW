@@ -267,7 +267,7 @@ block           : decl_list stmt_list
                     {
                         /*TODO*/
                         $$ = Allocate(BLOCK_NODE);
-                        makeFamily($$, 2, makeChild(Allocate(VARIABLE_DECL_LIST_NODE), $1), makeChild(Allocate(STMT_LIST_NODE), $1));
+                        makeFamily($$, 2, makeChild(Allocate(VARIABLE_DECL_LIST_NODE), $1), makeChild(Allocate(STMT_LIST_NODE), $2));
                     }
                 | stmt_list  
                     {
@@ -358,14 +358,14 @@ id_list		: ID
             | id_list MK_COMMA ID dim_decl
                 {
                     /*TODO*/
-                    $$ = makeIDNode($3, NORMAL_ID);
+                    $$ = makeIDNode($3, ARRAY_ID);
                     makeChild($$, $4);
                     makeSibling($1, $$);
                 }
             | ID dim_decl
                 {
                     /*TODO*/
-                    $$ = makeIDNode($1, NORMAL_ID);
+                    $$ = makeIDNode($1, ARRAY_ID);
                     makeChild($$, $2);
                 }
 		;
@@ -452,13 +452,13 @@ init_id		: ID
             | ID dim_decl 
                 {
                     /*TODO*/
-                    $$ = makeIDNode($1, NORMAL_ID);
+                    $$ = makeIDNode($1, ARRAY_ID);
                     makeChild($$, $2);
                 }
             | ID OP_ASSIGN relop_expr 
                 {
                     /*TODO*/
-                    $$ = makeIDNode($1, NORMAL_ID);
+                    $$ = makeIDNode($1, WITH_INIT_ID);
                     makeChild($$, $3);
                 }
             ;
@@ -483,6 +483,11 @@ stmt		: MK_LBRACE block MK_RBRACE
                     $$ = $2;
                 }
             /*TODO: | While Statement */
+            | WHILE MK_LPAREN relop_expr MK_RPAREN stmt
+                {
+                    $$ = makeStmtNode(WHILE_STMT);
+                    makeFamily($$, 2, $3, $5);
+                }
             | FOR MK_LPAREN assign_expr_list MK_SEMICOLON relop_expr_list MK_SEMICOLON assign_expr_list MK_RPAREN stmt
                 {
                     /*TODO*/
