@@ -1,3 +1,4 @@
 sample
 *.un~
 Makefile
+lex.yy.c
