@@ -91,6 +91,7 @@ SymbolTableEntry* retrieveSymbol(char* symbolName)
 
 SymbolTableEntry* enterSymbol(char* symbolName, SymbolAttribute* attribute)
 {
+	symbolTable.scopeDisplayElementCount++;
 	SymbolTableEntry* newEntry = newSymbolTableEntry(symbolTable.currentLevel);
 	newEntry->name = symbolName;
 	newEntry->attribute = attribute;
@@ -110,10 +111,10 @@ void openScope()
 {
 	//...
 	symbolTable.currentLevel++;
-	symbolTable.scopeDisplayElementCount++;
 }
 
 void closeScope()
 {
 	symbolTable.currentLevel--;
+	scopeDisplayElementCount = 0;
 }

@@ -102,4 +102,5 @@ int declaredLocally(char* symbolName);
 void openScope();
 void closeScope();
 
+
 #endif
