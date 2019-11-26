@@ -29,16 +29,56 @@ SymbolTableEntry* newSymbolTableEntry(int nestingLevel)
     return symbolTableEntry;
 }
 
-void removeFromHashTrain(int hashIndex, SymbolTableEntry* entry)
+void removeFromHashChain(int hashIndex, SymbolTableEntry* entry)
 {
+	SymbolTableEntry* firstEntry = symbolTable.hashTable[hashIndex];
+	if(entry->name == firstEntry->name && entry->attribute->attributeKind == firstEntry->attribute->attributeKind && entry->nestingLevel == firstEntry->nestingLevel)
+	{
+		symbolTable.hashTable[hashIndex] = firstEntry->nextInHashChain;
+		//firstEntry->nextInHashChain = NULL;
+		free(firstEntry);
+	}
+	else
+	{
+		SymbolTableEntry* currentEntry = symbolTable.hashTable[hashIndex];
+		while(entry->name != currentEntry->name || entry->attribute->attributeKind != currentEntry->attribute->attributeKind || entry->nestingLevel != currentEntry->nestingLevel)
+		{
+			currentEntry = currentEntry->nextInHashChain;
+			if(!currentEntry)
+			{
+				printf("No such entry found!");
+				exit(0);
+			}
+		}
+		SymbolTableEntry* prevEntry = currentEntry->prevInHashChain;
+		SymbolTableEntry* nextEntry = currentEntry->nextInHashChain;
+		prevEntry->nextInHashChain = nextEntry;
+		if(!nextEntry)	//到chain的尾巴 
+			nextEntry->prevInHashChain = prevEntry;
+		//currentEntry->prevInHashChain = NULL;
+		//currentEntry->nextInHashChain = NULL;
+		free(currentEntry);
+	}
 }
 
-void enterIntoHashTrain(int hashIndex, SymbolTableEntry* entry)
+void enterIntoHashChain(int hashIndex, SymbolTableEntry* entry)
 {
+	SymbolTableEntry* firstEntry = symbolTable.hashTable[hashIndex];
+	if(!firstEntry)		//這條chain是空的 
+		symbolTable.hashTable[hashIndex] = entry;
+	else
+	{
+		firstEntry->prevInHashChain = entry;
+		entry->nextInHashChain = firstEntry;
+		symbolTable.hashTable[hashIndex] = entry;
+	}
 }
 
 void initializeSymbolTable()
 {
+	symbolTable.scopeDisplay = NULL;
+	symbolTable.currentLevel = 0;
+	symbolTable.scopeDisplayElementCount = 0;
 }
 
 void symbolTableEnd()
@@ -51,6 +91,10 @@ SymbolTableEntry* retrieveSymbol(char* symbolName)
 
 SymbolTableEntry* enterSymbol(char* symbolName, SymbolAttribute* attribute)
 {
+	SymbolTableEntry* newEntry = newSymbolTableEntry(symbolTable.currentLevel);
+	newEntry->name = symbolName;
+	newEntry->attribute = attribute;
+	return newEntry;
 }
 
 //remove the symbol from the current scope
@@ -64,8 +108,12 @@ int declaredLocally(char* symbolName)
 
 void openScope()
 {
+	//...
+	symbolTable.currentLevel++;
+	symbolTable.scopeDisplayElementCount++;
 }
 
 void closeScope()
 {
+	symbolTable.currentLevel--;
 }
