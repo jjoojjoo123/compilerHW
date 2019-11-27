@@ -68,6 +68,10 @@ void initializeSymbolTable()
 
 void symbolTableEnd()
 {
+    while(symbolTable.currentLevel > -1){
+        closeScope();
+    }
+    free(symbolTable.scopeDisplay);
 }
 
 SymbolTableEntry* retrieveSymbol(char* symbolName)
@@ -88,6 +92,8 @@ SymbolTableEntry* enterSymbol(char* symbolName, SymbolAttribute* attribute)
         if(strcmp(currentEntry->name, symbolName) == 0){
             if(currentEntry->nestingLevel == symbolTable.currentLevel){
                 //redeclaration!!!
+                free(newEntry)
+                return NULL;
             }
             newEntry->sameNameInOuterLevel = currentEntry;
             removeFromHashChain(hashIndex, currentEntry);
@@ -114,8 +120,22 @@ void removeSymbol(char* symbolName)
             }
         }
     }
+    if(!currentEntry){
+        //nothing to remove
+        return;
+    }
     if(currentEntry->sameNameInOuterLevel){
         enterIntoHashChain(hashIndex, currentEntry->sameNameInOuterLevel);
+    }
+    //scopeDisplay
+    SymbolTableEntry* currentScopeEntry = symbolTable.scopeDisplay[symbolTable.currentLevel]
+    if(currentScopeEntry == currentEntry){
+        symbolTable.scopeDisplay[symbolTable.currentLevel] = currentEntry->nextInSameLevel;
+    }else{
+        while(currentScopeEntry && currentScopeEntry->nextInSameLevel != currentEntry){
+            currentScopeEntry = currentScopeEntry->nextInSameLevel;
+        }
+        currentScopeEntry->nextInSameLevel = currentEntry->nextInSameLevel;
     }
     free(currentEntry);
 }
@@ -140,6 +160,17 @@ void openScope()
 
 void closeScope()
 {
+    //we make sure that all names in the current scope are on the chain, and no same name in a scope
+    SymbolTableEntry* currentEntry = symbolTable.scopeDisplay[symbolTable.currentLevel];
+    while(currentEntry){
+        int hashIndex = HASH(currentEntry->name);
+        removeFromHashChain(hashIndex, currentEntry);
+        if(currentEntry->sameNameInOuterLevel){
+            enterIntoHashChain(hashIndex, currentEntry->sameNameInOuterLevel);
+        }
+        //free(current)?
+        currentEntry = currentEntry->nextInSameLevel;
+    }
     symbolTable.currentLevel--;
     //scopeDisplayElementCount = 0;
 }
