@@ -31,83 +31,24 @@ SymbolTableEntry* newSymbolTableEntry(int nestingLevel)
 
 void removeFromHashChain(int hashIndex, SymbolTableEntry* entry)
 {
-    SymbolTableEntry* currentEntry = symbolTable.hashTable[hashIndex];
-    SymbolTableEntry* sameNameInOuterLevel = NULL;
-    if(strcmp(entry->name, currentEntry->name) == 0)
-    {
-        sameNameInOuterLevel = currentEntry->sameNameInOuterLevel;
-        if(sameNameInOuterLevel){
-            symbolTable.hashTable[hashIndex] = sameNameInOuterLevel;
-            sameNameInOuterLevel->nextInHashChain = currentEntry->nextInHashChain;
-            sameNameInOuterLevel->prevInHashChain = NULL;
-            currentEntry->nextInHashChain->prevInHashChain = sameNameInOuterLevel;
-        }else{
-            symbolTable.hashTable[hashIndex] = currentEntry->nextInHashChain;
-            if(currentEntry->nextInHashChain){
-                currentEntry->nextInHashChain->prevInHashChain = currentEntry->nextInHashChain;
-            }
+    if(!entry->prevInHashChain){
+        symbolTable.hashTable[hashIndex] = entry->nextInHashChain;
+        if(entry->nextInHashChain){
+            entry->nextInHashChain->prevInHashChain = NULL;
         }
-        free(currentEntry);
     }
-    else
-    {
-        //SymbolTableEntry* currentEntry = symbolTable.hashTable[hashIndex];
-        while(currentEntry && strcmp(entry->name, currentEntry->name) != 0)
-        {
-            currentEntry = currentEntry->nextInHashChain;
-        }
-        if(!currentEntry)
-        {
-            printf("No such entry found!");
-            exit(0);
-        }
-        SymbolTableEntry* prevEntry = currentEntry->prevInHashChain;
-        SymbolTableEntry* nextEntry = currentEntry->nextInHashChain;
-        sameNameInOuterLevel = currentEntry->sameNameInOuterLevel;
-        if(sameNameInOuterLevel){
-            prevEntry->nextInHashChain = sameNameInOuterLevel;
-            sameNameInOuterLevel->prevInHashChain = prevEntry;
-            sameNameInOuterLevel->nextInHashChain = nextEntry;
-            if(nextEntry){
-                nextEntry->prevInHashChain = sameNameInOuterLevel;
-            }
-        }else{
-            prevEntry->nextInHashChain = nextEntry;
-            if(nextEntry){
-                nextEntry->prevInHashChain = prevEntry;
-            }
-        }
-        free(currentEntry);
-    }
+    entry->prevInHashChain = NULL;
+    entry->nextInHashChain = NULL;
 }
 
 void enterIntoHashChain(int hashIndex, SymbolTableEntry* entry)
 {
-    SymbolTableEntry* currentEntry = symbolTable.hashTable[hashIndex];
-    if(!currentEntry)     //
+    if(!symbolTable.hashTable[hashIndex]){
         symbolTable.hashTable[hashIndex] = entry;
-    else if(strcmp(currentEntry->name, entry->name) == 0){
-        entry->sameNameInOuterLevel = currentEntry; //you can detect redeclaration here
+    }else{
+        symbolTable.hashTable[hashIndex]->prevInHashChain = entry;
+        entry->nextInHashChain = symbolTable.hashTable[hashIndex];
         symbolTable.hashTable[hashIndex] = entry;
-    }
-    else
-    {
-        while(strcmp(entry->name, currentEntry->name) != 0)
-        {
-            if(!currentEntry->nextInHashChain){
-                currentEntry->nextInHashChain = entry;
-                entry->prevInHashChain = currentEntry;
-                return;
-            }
-            currentEntry = currentEntry->nextInHashChain;
-        }
-        entry->sameNameInOuterLevel = currentEntry;
-        currentEntry->prevInHashChain->nextInHashChain = entry;
-        entry->prevInHashChain = currentEntry->prevInHashChain;
-        entry->nextInHashChain = currentEntry->nextInHashChain;
-        if(currentEntry->nextInHashChain){
-            currentEntry->nextInHashChain->prevInHashChain = entry;
-        }
     }
 }
 
@@ -136,18 +77,47 @@ SymbolTableEntry* retrieveSymbol(char* symbolName)
 SymbolTableEntry* enterSymbol(char* symbolName, SymbolAttribute* attribute)
 {
     //symbolTable.scopeDisplayElementCount++;
+    int hashIndex = HASH(symbolName);
     SymbolTableEntry* newEntry = newSymbolTableEntry(symbolTable.currentLevel);
     newEntry->nextInSameLevel = symbolTable.scopeDisplay[symbolTable.currentLevel];
     symbolTable.scopeDisplay[symbolTable.currentLevel] = newEntry;
     newEntry->name = symbolName;
     newEntry->attribute = attribute;
-    enterIntoHashChain(HASH(symbolName), newEntry);
+    SymbolTableEntry* currentEntry = symbolTable.hashTable[hashIndex];
+    while(currentEntry){
+        if(strcmp(currentEntry->name, symbolName) == 0){
+            if(currentEntry->nestingLevel == symbolTable.currentLevel){
+                //redeclaration!!!
+            }
+            newEntry->sameNameInOuterLevel = currentEntry;
+            removeFromHashChain(hashIndex, currentEntry);
+            break;
+        }
+    }
+    enterIntoHashChain(hashIndex, newEntry);
     return newEntry;
 }
 
 //remove the symbol from the current scope
 void removeSymbol(char* symbolName)
 {
+    int hashIndex = HASH(symbolName);
+    SymbolTableEntry* currentEntry = symbolTable.hashTable[hashIndex];
+    while(currentEntry){
+        if(strcmp(currentEntry->name, symbolName) == 0){
+            if(currentEntry->nestingLevel != symbolTable.currentLevel){
+                //nothing to remove
+                return;
+            }else{
+                removeFromHashChain(hashIndex, currentEntry);
+                break;
+            }
+        }
+    }
+    if(currentEntry->sameNameInOuterLevel){
+        enterIntoHashChain(hashIndex, currentEntry->sameNameInOuterLevel);
+    }
+    free(currentEntry);
 }
 
 int declaredLocally(char* symbolName)
