@@ -92,7 +92,7 @@ SymbolTableEntry* enterSymbol(char* symbolName, SymbolAttribute* attribute)
         if(strcmp(currentEntry->name, symbolName) == 0){
             if(currentEntry->nestingLevel == symbolTable.currentLevel){
                 //redeclaration!!!
-                free(newEntry)
+                free(newEntry);
                 return NULL;
             }
             newEntry->sameNameInOuterLevel = currentEntry;
@@ -128,7 +128,7 @@ void removeSymbol(char* symbolName)
         enterIntoHashChain(hashIndex, currentEntry->sameNameInOuterLevel);
     }
     //scopeDisplay
-    SymbolTableEntry* currentScopeEntry = symbolTable.scopeDisplay[symbolTable.currentLevel]
+    SymbolTableEntry* currentScopeEntry = symbolTable.scopeDisplay[symbolTable.currentLevel];
     if(currentScopeEntry == currentEntry){
         symbolTable.scopeDisplay[symbolTable.currentLevel] = currentEntry->nextInSameLevel;
     }else{
@@ -148,7 +148,7 @@ void openScope()
 {
     //...
     symbolTable.currentLevel++;
-    if(symbolTable.currentLevel >= symbolTable.scopeDisplay){
+    if(symbolTable.currentLevel >= symbolTable.scopeDisplayElementCount){
         symbolTableEntry** newScopeDisplay = (SymbolTableEntry**)malloc(sizeof(SymbolTableEntry*) * symbolTable.scopeDisplayElementCount * 2);
         memcpy(newScopeDisplay, symbolTable.scopeDisplay, sizeof(SymbolTableEntry*) * symbolTable.scopeDisplayElementCount);
         symbolTable.scopeDisplayElementCount *= 2;
