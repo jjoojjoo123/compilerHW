@@ -36,6 +36,11 @@ void removeFromHashChain(int hashIndex, SymbolTableEntry* entry)
         if(entry->nextInHashChain){
             entry->nextInHashChain->prevInHashChain = NULL;
         }
+    }else{
+        entry->prevInHashChain->nextInHashChain = entry->nextInHashChain;
+        if(entry->nextInHashChain){
+            entry->nextInHashChain->prevInHashChain = entry->prevInHashChain;
+        }
     }
     entry->prevInHashChain = NULL;
     entry->nextInHashChain = NULL;
