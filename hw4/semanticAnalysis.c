@@ -111,6 +111,7 @@ DATA_TYPE getBiggerType(DATA_TYPE dataType1, DATA_TYPE dataType2)
 void processProgramNode(AST_NODE *programNode)
 {
     initializeSymbolTable();
+    programNode->dataType = NONE_TYPE;
 
     TypeDescriptor* inttype = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
     inttype->kind = SCALAR_TYPE_DESCRIPTOR;
@@ -140,12 +141,16 @@ void processProgramNode(AST_NODE *programNode)
     AST_NODE* currentDeclareVariable = NULL;
     while(currentNode){
         if(currentNode->nodeType == VARIABLE_DECL_LIST_NODE){
-            currentDeclareVariable = currentNode->child;
+            /*currentDeclareVariable = currentNode->child;
             while(currentDeclareVariable){
                 processDeclarationNode(currentDeclareVariable);
-            }
+            }*/
+            processGeneralNode(currentNode);
         }else{
             processDeclarationNode(currentNode);
+        }
+        if(currentNode->dataType == ERROR_TYPE){
+            programNode->dataType = ERROR_TYPE;
         }
         currentNode = currentNode->rightSibling;
     }
@@ -174,8 +179,8 @@ void processDeclarationNode(AST_NODE* declarationNode)
         case FUNCTION_PARAMETER_DECL:
             declareIdList(declarationNode, VARIABLE_ATTRIBUTE, 1);
             break;
-        default:
-            printf("WTF in processDeclarationNode\n");
+        /*default:
+            printf("WTF in processDeclarationNode\n");*/
     }
 }
 
@@ -199,29 +204,47 @@ void processTypeNode(AST_NODE* idNodeAsType)
 
 void declareIdList(AST_NODE* declarationNode, SymbolAttributeKind isVariableOrTypeAttribute, int ignoreArrayFirstDimSize)
 {
+    declarationNode->dataType = NONE_TYPE;
     AST_NODE* typeNode = declarationNode->child;
     AST_NODE* currentNode = typeNode->rightSibling;
+    if(typeNode->dataType == VOID_TYPE && isVariableOrTypeAttribute == VARIABLE_ATTRIBUTE){
+        printErrorMsg(declarationNode, VOID_VARIABLE);
+        declarationNode->dataType = ERROR_TYPE;
+        return;
+    }
     while(currentNode){
         if(declaredLocally(currentNode->semantic_value.identifierSemanticValue.identifierName)){
             printErrorMsg(currentNode, SYMBOL_REDECLARE);
+            declarationNode->dataType = ERROR_TYPE;
         }else{
             SymbolAttribute* attribute = (SymbolAttribute*)malloc(sizeof(SymbolAttribute));
             //TypeDescriptor* typeDescriptor = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
             attribute->attributeKind = isVariableOrTypeAttribute;
             //attribute->attr.typeDescriptor = typeDescriptor;
+            currentNode->dataType = NONE_TYPE;
             switch(currentNode->semantic_value.identifierSemanticValue.kind){
                 case WITH_INIT_ID:
-                    processExprNode(currentNode->child);
+                    processExprRelatedNode(currentNode->child);
+                    if(currentNode->child->dataType == ERROR_TYPE){
+                        currentNode->dataType = ERROR_TYPE;
+                        break;
+                    }
                 case NORMAL_ID:
                     attribute->attr.typeDescriptor = typeNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.typeDescriptor;
                     break;
                 case ARRAY_ID:
                     attribute->attr.typeDescriptor = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
-                    attribute->attr.typeDescriptor.kind = ARRAY_TYPE_DESCRIPTOR;
+                    attribute->attr.typeDescriptor->kind = ARRAY_TYPE_DESCRIPTOR;
+                    attribute->attr.typeDescriptor->properties.arrayProperties.elementType = typeNode->dataType;
                     processDeclDimList(currentNode, attribute->attr.typeDescriptor, ignoreArrayFirstDimSize);
                     break;
             }
-            enterSymbol(currentNode->semantic_value.identifierSemanticValue.identifierName, attribute);
+            if(currentNode->dataType == ERROR_TYPE){
+                declarationNode->dataType = ERROR_TYPE;
+                free(attribute);
+            }else{
+                enterSymbol(currentNode->semantic_value.identifierSemanticValue.identifierName, attribute);
+            }
         }
         currentNode = currentNode->rightSibling;
     }
@@ -246,6 +269,11 @@ void checkWhileStmt(AST_NODE* whileNode)
     AST_NODE* testNode = whileNode->child;
     checkAssignOrExpr(testNode);
     processStmtNode(testNode->rightSibling);
+    if(testNode->dataType == ERROR_TYPE || testNode->rightSibling->dataType == ERROR_TYPE){
+        whileNode->dataType = ERROR_TYPE;
+    }else{
+        whileNode->dataType = NONE_TYPE;
+    }
 }
 
 
@@ -259,6 +287,11 @@ void checkForStmt(AST_NODE* forNode)
     processGeneralNode(relopExprListNode);
     processGeneralNode(assignExprListNode2);
     processStmtNode(stmtNode);
+    if(assignExprListNode1->dataType == ERROR_TYPE || relopExprListNode->dataType == ERROR_TYPE || assignExprListNode2->dataType == ERROR_TYPE || stmtNode->dataType == ERROR_TYPE){
+        forNode->dataType = ERROR_TYPE;
+    }else{
+        forNode->dataType = NONE_TYPE;
+    }
 }
 
 
@@ -269,9 +302,9 @@ void checkAssignmentStmt(AST_NODE* assignmentNode)
     processVariableLValue(varNode);
     processExprRelatedNode(relopNode);
     if(varNode->dataType == ERROR_TYPE || relopNode->dataType == ERROR_TYPE){
-        assignmentNode->DATA_TYPE = ERROR_TYPE;
+        assignmentNode->dataType = ERROR_TYPE;
     }else{
-        assignmentNode->DATA_TYPE = getBiggerType(varNode->dataType, relopNode->dataType);
+        assignmentNode->dataType = getBiggerType(varNode->dataType, relopNode->dataType);
     }
 }
 
@@ -284,6 +317,11 @@ void checkIfStmt(AST_NODE* ifNode)
     checkAssignOrExpr(testNode);
     processStmtNode(stmtNode);
     processStmtNode(elseNode);
+    if(testNode->dataType == ERROR_TYPE || stmtNode->dataType == ERROR_TYPE || elseNode->dataType == ERROR_TYPE){
+        ifNode->dataType = ERROR_TYPE;
+    }else{
+        ifNode->dataType = NONE_TYPE;
+    }
 }
 
 void checkWriteFunction(AST_NODE* functionCallNode)
@@ -294,7 +332,7 @@ void checkWriteFunction(AST_NODE* functionCallNode)
 void checkFunctionCall(AST_NODE* functionCallNode)
 {
     AST_NODE* idNode = functionCallNode->child;
-    AST_NODE* paramListNode = idNode->rightSibling;
+    AST_NODE* argListNode = idNode->rightSibling;
     SymbolTableEntry* entry = retrieveSymbol(idNodeAsType->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
         printErrorMsg(idNode, SYMBOL_UNDECLARED);
@@ -303,14 +341,14 @@ void checkFunctionCall(AST_NODE* functionCallNode)
         return;
     }
     //we should check all params no matter if id is function or not
-    processGeneralNode(paramListNode); //may cause currentArgument ERROR_TYPE
+    processGeneralNode(argListNode); //may cause currentArgument ERROR_TYPE
     if(entry->attribute->attributeKind != FUNCTION_SIGNATURE){
         printErrorMsg(idNode, NOT_FUNCTION_NAME);
         idNode->dataType = ERROR_TYPE;
         functionCallNode->dataType = ERROR_TYPE;
         return;
     }
-    AST_NODE* currentArgument = paramListNode->child;
+    AST_NODE* currentArgument = argListNode->child;
     Parameter* currentParameter = entry->attribute->attr.functionSignature->parameterList;
     int errors = 0;
     while(currentArgument && currentParameter){
@@ -726,25 +764,145 @@ void processConstValueNode(AST_NODE* constValueNode)
 
 void checkReturnStmt(AST_NODE* returnNode)
 {
+    AST_NODE* child = returnNode->child;
+    //trace the function type
+    AST_NODE* parent = returnNode->parent;
+    while(parent->nodeType != DECLARATION_NODE){
+        parent = parent->parent;
+    }
+    AST_NODE* typeNode = parent->child;
+    int error = 0;
+    if(child->nodeType == NUL_NODE){
+        if(typeNode->dataType != VOID_TYPE){
+            printErrorMsg(returnNode, RETURN_TYPE_UNMATCH);
+            error++;
+        }
+    }else{
+        processExprRelatedNode(child);
+        if(child->dataType != typeNode->dataType){
+            if(!((child->dataType == INT_TYPE || child->dataType == FLOAT_TYPE) && (typeNode->dataType == INT_TYPE || typeNode->dataType == FLOAT_TYPE))){
+                printErrorMsg(returnNode, RETURN_TYPE_UNMATCH);
+                error++;
+            }
+        }
+    }
+    if(error){
+        returnNode->dataType = ERROR_TYPE;
+    }else{
+        returnNode->dataType = typeNode->dataType;
+    }
 }
 
 
 void processBlockNode(AST_NODE* blockNode)
 {
+    openScope();
+    blockNode->dataType = NONE_TYPE;
+    AST_NODE* whatList = blockNode->child;
+    while(whatList){
+        processGeneralNode(whatList);
+        if(whatList->dataType == ERROR_TYPE){
+            blockNode->dataType = ERROR_TYPE;
+        }
+        whatList = whatList->rightSibling;
+    }
+    closeScope();
 }
 
 
 void processStmtNode(AST_NODE* stmtNode)
 {
+    if(stmtNode->nodeType == BLOCK_NODE){
+        processBlockNode(stmtNode);
+    }else if(stmtNode->nodeType == STMT_NODE){
+        switch(stmtNode->semantic_value.stmtSemanticValue.kind){
+            case WHILE_STMT:
+                checkWhileStmt(stmtNode);
+                break;
+            case FOR_STMT:
+                checkForStmt(stmtNode);
+                break;
+            case ASSIGN_STMT:
+                checkAssignmentStmt(stmtNode);
+                break;
+            case IF_STMT:
+                checkIfStmt(stmtNode);
+                break;
+            case FUNCTION_CALL_STMT:
+                checkFunctionCall(stmtNode);
+                break;
+            case RETURN_STMT:
+                checkReturnStmt(stmtNode);
+                break;
+        }
+    }else{
+        //NUL_NODE
+        stmtNode->dataType = NONE_TYPE;
+    }
 }
 
 
 void processGeneralNode(AST_NODE *node)
 {
+    node->dataType = NONE_TYPE;
+    AST_NODE* child = node->child;
+    while(child){
+        switch(node->nodeType){
+            case VARIABLE_DECL_LIST_NODE:
+                processDeclarationNode(child);
+                break;
+            case STMT_LIST_NODE:
+                processStmtNode(child);
+                break;
+            case NONEMPTY_ASSIGN_EXPR_LIST_NODE:
+                checkAssignmentStmt(child);
+                break;
+            case NONEMPTY_RELOP_EXPR_LIST_NODE:
+                processExprRelatedNode(child);
+                break;
+        }
+        if(child->dataType == ERROR_TYPE){
+            node->dataType = ERROR_TYPE;
+        }
+        child = child->rightSibling;
+    }
 }
 
 void processDeclDimList(AST_NODE* idNode, TypeDescriptor* typeDescriptor, int ignoreFirstDimSize)
 {
+    typeDescriptor->properties.arrayProperties.dimension = 0;
+    AST_NODE* dimListNode = idNode->child;
+    if(ignoreFirstDimSize && dimListNode->nodeType == NUL_NODE){
+        typeDescriptor->properties.arrayProperties.dimension++;
+        typeDescriptor->properties.arrayProperties.sizeInEachDimension[0] = 0;
+        dimListNode = dimListNode->rightSibling;
+    }
+    while(dimListNode){
+        if(typeDescriptor->properties.arrayProperties.dimension >= MAX_ARRAY_DIMENSION){
+            printErrorMsg(idNode, EXCESSIVE_ARRAY_DIM_DECLARATION);
+            idNode->dataType = ERROR_TYPE;
+            return;
+        }
+        processExprRelatedNode(dimListNode);
+        if(dimListNode->dataType == ERROR_TYPE){
+            idNode->dataType = ERROR_TYPE;
+        }else if(dimListNode->dataType != INT_TYPE){
+            printErrorMsg(dimListNode, ARRAY_SUBSCRIPT_NOT_INT);
+            idNode->dataType = ERROR_TYPE;
+        }else if(dimListNode->nodeType == CONST_VALUE_NODE && dimListNode->semantic_value.const1->const_u.intval < 0){
+            printErrorMsg(dimListNode, ARRAY_SIZE_NEGATIVE);
+            idNode->dataType = ERROR_TYPE;
+        }else if(dimListNode->nodeType == EXPR_NODE && dimListNode->semantic_value.exprSemanticValue.isConstEval && dimListNode->semantic_value.exprSemanticValue.constEvalValue.iValue < 0){
+            printErrorMsg(dimListNode, ARRAY_SIZE_NEGATIVE);
+            idNode->dataType = ERROR_TYPE;
+        }else{
+            //but dim_fn accept expr, which may not be constexpr. how to do?
+            typeDescriptor->properties.arrayProperties.sizeInEachDimension[typeDescriptor->properties.arrayProperties.dimension] =
+                (dimListNode->nodeType == CONST_VALUE_NODE ? dimListNode->semantic_value.const1->const_u.intval : dimListNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
+        }
+        typeDescriptor->properties.arrayProperties.dimension++;
+        dimListNode = dimListNode->rightSibling;
+    }
 }
 
 
