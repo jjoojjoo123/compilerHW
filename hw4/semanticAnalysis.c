@@ -243,7 +243,7 @@ void declareIdList(AST_NODE* declarationNode, SymbolAttributeKind isVariableOrTy
                 declarationNode->dataType = ERROR_TYPE;
                 free(attribute);
             }else{
-                enterSymbol(currentNode->semantic_value.identifierSemanticValue.identifierName, attribute);
+                declarationNode->semantic_value.identifierSemanticValue.symbolTableEntry = enterSymbol(currentNode->semantic_value.identifierSemanticValue.identifierName, attribute);
             }
         }
         currentNode = currentNode->rightSibling;
@@ -796,7 +796,7 @@ void checkReturnStmt(AST_NODE* returnNode)
 
 void processBlockNode(AST_NODE* blockNode)
 {
-    openScope();
+    //please open scope before calling me
     blockNode->dataType = NONE_TYPE;
     AST_NODE* whatList = blockNode->child;
     while(whatList){
@@ -806,14 +806,15 @@ void processBlockNode(AST_NODE* blockNode)
         }
         whatList = whatList->rightSibling;
     }
-    closeScope();
 }
 
 
 void processStmtNode(AST_NODE* stmtNode)
 {
     if(stmtNode->nodeType == BLOCK_NODE){
+        openScope();
         processBlockNode(stmtNode);
+        closeScope();
     }else if(stmtNode->nodeType == STMT_NODE){
         switch(stmtNode->semantic_value.stmtSemanticValue.kind){
             case WHILE_STMT:
@@ -908,4 +909,71 @@ void processDeclDimList(AST_NODE* idNode, TypeDescriptor* typeDescriptor, int ig
 
 void declareFunction(AST_NODE* declarationNode)
 {
+    AST_NODE* typeNode = declarationNode->child;
+    AST_NODE* idNode = typeNode->rightSibling;
+    AST_NODE* paramListNode = idNode->rightSibling;
+    AST_NODE* blockNode = paramListNode->rightSibling;
+    declarationNode->dataType = NONE_TYPE;
+    processTypeNode(typeNode);
+    if(typeNode->dataType == ERROR_TYPE){
+        declarationNode->dataType = ERROR_TYPE;
+    }
+    if(declaredLocally(idNode->semantic_value.identifierSemanticValue.identifierName)){
+        printErrorMsg(idNode, SYMBOL_REDECLARE);
+        declarationNode->dataType = ERROR_TYPE;
+    }
+    SymbolAttribute* attribute = (SymbolAttribute*)malloc(sizeof(SymbolAttribute));
+    attribute->attributeKind = FUNCTION_SIGNATURE;
+    attribute->attr.functionSignature = (FunctionSignature*)malloc(sizeof(FunctionSignature));
+    attribute->attr.functionSignature->parametersCount = 0;
+    attribute->attr.functionSignature->parameterList = NULL;
+    attribute->attr.functionSignature->returnType = typeNode->dataType;
+    if(declarationNode->dataType != ERROR_TYPE){
+        //temp add
+        enterSymbol(idNode->semantic_value.identifierSemanticValue.identifierName, attribute);
+    }
+    openScope();
+    AST_NODE* paramNode = paramListNode->child;
+    Parameter* nowParam = NULL;
+    int paramError = 0;
+    while(paramNode){
+        processDeclarationNode(paramNode);
+        attribute->attr.functionSignature->parametersCount++;
+        if(paramNode->dataType == ERROR_TYPE){
+            paramError++;
+        }
+        Parameter* param = (Parameter*)malloc(sizeof(Parameter));
+        param->next = NULL;
+        param->type = (paramNode->dataType == ERROR_TYPE) ? NULL : paramNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.typeDescriptor;
+        param->parameterName = param->semantic_value.identifierSemanticValue.identifierName;
+        if(!nowParam){
+            attribute->attr.functionSignature->parameterList = param;
+        }else{
+            nowParam->next = param;
+        }
+        nowParam = param;
+        paramNode = paramNode->rightSibling;
+    }
+    if(paramError){
+        paramNode->dataType = ERROR_TYPE;
+    }
+    //block
+    processBlockNode(blockNode);
+    closeScope();
+    if(declarationNode->dataType){
+        removeSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
+    }
+    if(paramError || blockNode->dataType == ERROR_TYPE){
+        declarationNode->dataType = ERROR_TYPE;
+    }
+    if(declarationNode->dataType == ERROR_TYPE){
+        nowParam = attribute->attr.functionSignature->parameterList;
+        while(nowParam){
+            Parameter* freeParam = nowParam;
+            nowParam = nowParam->next;
+            free(freeParam);
+        }
+        free(attribute->attr.functionSignature);
+        free(attribute);
+    }
 }
