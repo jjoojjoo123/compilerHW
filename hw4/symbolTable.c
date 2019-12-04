@@ -173,7 +173,7 @@ void openScope()
     //...
     symbolTable.currentLevel++;
     if(symbolTable.currentLevel >= symbolTable.scopeDisplayElementCount){
-        symbolTableEntry** newScopeDisplay = (SymbolTableEntry**)malloc(sizeof(SymbolTableEntry*) * symbolTable.scopeDisplayElementCount * 2);
+        SymbolTableEntry** newScopeDisplay = (SymbolTableEntry**)malloc(sizeof(SymbolTableEntry*) * symbolTable.scopeDisplayElementCount * 2);
         memcpy(newScopeDisplay, symbolTable.scopeDisplay, sizeof(SymbolTableEntry*) * symbolTable.scopeDisplayElementCount);
         symbolTable.scopeDisplayElementCount *= 2;
         free(symbolTable.scopeDisplay);

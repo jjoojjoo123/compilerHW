@@ -311,7 +311,7 @@ void checkAssignmentStmt(AST_NODE* assignmentNode)
 
 void checkIfStmt(AST_NODE* ifNode)
 {
-    AST_NODE* testNode = whileNode->child;
+    AST_NODE* testNode = ifNode->child;
     AST_NODE* stmtNode = testNode->rightSibling;
     AST_NODE* elseNode = stmtNode->rightSibling;
     checkAssignOrExpr(testNode);
@@ -333,7 +333,7 @@ void checkFunctionCall(AST_NODE* functionCallNode)
 {
     AST_NODE* idNode = functionCallNode->child;
     AST_NODE* argListNode = idNode->rightSibling;
-    SymbolTableEntry* entry = retrieveSymbol(idNodeAsType->semantic_value.identifierSemanticValue.identifierName);
+    SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
         printErrorMsg(idNode, SYMBOL_UNDECLARED);
         idNode->dataType = ERROR_TYPE;
@@ -366,7 +366,7 @@ void checkFunctionCall(AST_NODE* functionCallNode)
     }else if(currentParameter){
         printErrorMsg(functionCallNode, TOO_FEW_ARGUMENTS);
     }else{
-        functionCallNode->dataType = entry->attribute->attr.functionSignature.returnType;
+        functionCallNode->dataType = entry->attribute->attr.functionSignature->returnType;
     }
 }
 
@@ -376,10 +376,10 @@ void checkParameterPassing(Parameter* formalParameter, AST_NODE* actualParameter
         return;
     }
     int argumentArray = (actualParameter->dataType == INT_PTR_TYPE || actualParameter->dataType == FLOAT_PTR_TYPE);
-    if(formalParameter->type.kind = SCALAR_TYPE_DESCRIPTOR && argumentArray){
+    if(formalParameter->type->kind = SCALAR_TYPE_DESCRIPTOR && argumentArray){
         printErrorMsgSpecial(actualParameter, formalParameter->parameterName, PASS_ARRAY_TO_SCALAR);
         actualParameter->dataType = ERROR_TYPE;
-    }else if(formalParameter->type.kind = ARRAY_TYPE_DESCRIPTOR && !argumentArray){
+    }else if(formalParameter->type->kind = ARRAY_TYPE_DESCRIPTOR && !argumentArray){
         printErrorMsgSpecial(actualParameter, formalParameter->parameterName, PASS_SCALAR_TO_ARRAY);
         actualParameter->dataType = ERROR_TYPE;
     }
@@ -596,15 +596,15 @@ void processExprNode(AST_NODE* exprNode)
         AST_NODE* operand2 = operand1->rightSibling;
         processExprRelatedNode(operand1);
         processExprRelatedNode(operand2);
-        if(operand1 == ERROR_TYPE || operand2 == ERROR_TYPE){
+        if(operand1->dataType == ERROR_TYPE || operand2->dataType == ERROR_TYPE){
             exprNode->dataType = ERROR_TYPE;
         }else{
             int error = 0;
-            if(operand1.dataType == INT_PTR_TYPE || operand1.dataType == FLOAT_PTR_TYPE){
+            if(operand1->dataType == INT_PTR_TYPE || operand1->dataType == FLOAT_PTR_TYPE){
                 printErrorMsg(operand1, INCOMPATIBLE_ARRAY_DIMENSION);
                 error++;
             }
-            if(operand2.dataType == INT_PTR_TYPE || operand2.dataType == FLOAT_PTR_TYPE){
+            if(operand2->dataType == INT_PTR_TYPE || operand2->dataType == FLOAT_PTR_TYPE){
                 printErrorMsg(operand2, INCOMPATIBLE_ARRAY_DIMENSION);
                 error++;
             }
@@ -625,23 +625,24 @@ void processExprNode(AST_NODE* exprNode)
 
 void processVariableLValue(AST_NODE* idNode)
 {
-    SymbolTableEntry* entry = retrieveSymbol(idNodeAsType->semantic_value.identifierSemanticValue.identifierName);
+    SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
         printErrorMsg(idNode, SYMBOL_UNDECLARED);
         idNode->dataType = ERROR_TYPE;
         return;
-    }
-    switch(entry->attribute->attributeKind){
+    }else{
         idNode->semantic_value.identifierSemanticValue.symbolTableEntry = entry;
-        case TYPE_ATTRIBUTE:
-            printErrorMsg(idNode, IS_TYPE_NOT_VARIABLE);
-            idNode->dataType = ERROR_TYPE;
-            return;
-        case FUNCTION_SIGNATURE:
-            printErrorMsg(idNode, IS_FUNCTION_NOT_VARIABLE);
-            idNode->dataType = ERROR_TYPE;
-            return;
-    }
+	    switch(entry->attribute->attributeKind){
+	        case TYPE_ATTRIBUTE:
+	            printErrorMsg(idNode, IS_TYPE_NOT_VARIABLE);
+	            idNode->dataType = ERROR_TYPE;
+	            return;
+	        case FUNCTION_SIGNATURE:
+	            printErrorMsg(idNode, IS_FUNCTION_NOT_VARIABLE);
+	            idNode->dataType = ERROR_TYPE;
+	            return;
+	    }
+	}
     TypeDescriptor *typeDescriptor = entry->attribute->attr.typeDescriptor;
     if(idNode->semantic_value.identifierSemanticValue.kind == NORMAL_ID){
         if(typeDescriptor->kind == SCALAR_TYPE_DESCRIPTOR){
@@ -686,7 +687,7 @@ void processVariableLValue(AST_NODE* idNode)
 
 void processVariableRValue(AST_NODE* idNode)
 {
-    SymbolTableEntry* entry = retrieveSymbol(idNodeAsType->semantic_value.identifierSemanticValue.identifierName);
+    SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
         printErrorMsg(idNode, SYMBOL_UNDECLARED);
         idNode->dataType = ERROR_TYPE;
@@ -748,7 +749,7 @@ void processVariableRValue(AST_NODE* idNode)
 
 void processConstValueNode(AST_NODE* constValueNode)
 {
-    switch(constValueNode->semantic_value.const1->constValueNode){
+    switch(constValueNode->semantic_value.const1->const_type){
         case INTEGERC:
             constValueNode->dataType = INT_TYPE;
             break;
@@ -945,7 +946,7 @@ void declareFunction(AST_NODE* declarationNode)
         Parameter* param = (Parameter*)malloc(sizeof(Parameter));
         param->next = NULL;
         param->type = (paramNode->dataType == ERROR_TYPE) ? NULL : paramNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.typeDescriptor;
-        param->parameterName = param->semantic_value.identifierSemanticValue.identifierName;
+        param->parameterName = paramNode->semantic_value.identifierSemanticValue.identifierName;
         if(!nowParam){
             attribute->attr.functionSignature->parameterList = param;
         }else{
