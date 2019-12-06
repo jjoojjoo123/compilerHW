@@ -67,14 +67,32 @@ void printErrorMsgSpecial(AST_NODE* node1, char* name2, ErrorMsgKind errorMsgKin
 {
     g_anyErrorOccur = 1;
     printf("Error found in line %d\n", node1->linenumber);
-    /*
-    switch(errorMsgKind)
-    {
-    default:
-        printf("Unhandled case in void printErrorMsg(AST_NODE* node, ERROR_MSG_KIND* errorMsgKind)\n");
-        break;
+     switch (errorMsgKind) {
+        case SYMBOL_UNDECLARED:
+            printf("ID <%s> undeclared.\n", name2);
+            break;
+        case SYMBOL_REDECLARE:
+            printf("ID <%s> redeclared.\n", name2);
+            break;
+        case TOO_FEW_ARGUMENTS:
+            printf("too few arguments to function <%s>.\n", name2);
+            break;
+        case TOO_MANY_ARGUMENTS:
+            printf("too many arguments to function <%s>.\n", name2);
+            break;
+        case PASS_ARRAY_TO_SCALAR:
+            printf("Array <%s> passed to scalar parameter <%s>.\n", node1->semantic_value.identifierSemanticValue.identifierName, name2);
+            break;
+        case PASS_SCALAR_TO_ARRAY:
+            printf("Scalar <%s> passed to array parameter <%s>.\n", node1->semantic_value.identifierSemanticValue.identifierName, name2);
+            break;
+        case SYMBOL_IS_NOT_TYPE:
+            printf("Type <%s> is not a valid type", name2);
+            break;
+        default:
+            printf("Unhandled case in void printErrorMsg(AST_NODE* node, ERROR_MSG_KIND* errorMsgKind)\n");
+            break;
     }
-    */
 }
 
 
@@ -82,13 +100,21 @@ void printErrorMsg(AST_NODE* node, ErrorMsgKind errorMsgKind)
 {
     g_anyErrorOccur = 1;
     printf("Error found in line %d\n", node->linenumber);
-    /*
-    switch(errorMsgKind)
-    {
-        printf("Unhandled case in void printErrorMsg(AST_NODE* node, ERROR_MSG_KIND* errorMsgKind)\n");
-        break;
+    
+    switch (errorMsgKind) {
+        case RETURN_TYPE_UNMATCH:
+            puts("Incompatible return type.");
+            break;
+        case INCOMPATIBLE_ARRAY_DIMENSION:
+            puts("Incompatible array dimensions.");
+            break;
+        case ARRAY_SUBSCRIPT_NOT_INT:
+            printf("Array subscript is not an integer.");
+            break;
+        default:
+            printf("Unhandled case in void printErrorMsg(AST_NODE* node, ERROR_MSG_KIND* errorMsgKind)\n");
+            break;
     }
-    */
 }
 
 
@@ -110,7 +136,6 @@ DATA_TYPE getBiggerType(DATA_TYPE dataType1, DATA_TYPE dataType2)
 
 void processProgramNode(AST_NODE *programNode)
 {
-    initializeSymbolTable();
     programNode->dataType = NONE_TYPE;
 
     TypeDescriptor* inttype = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
@@ -154,7 +179,6 @@ void processProgramNode(AST_NODE *programNode)
         }
         currentNode = currentNode->rightSibling;
     }
-    symbolTableEnd();
 }
 
 void processDeclarationNode(AST_NODE* declarationNode)
@@ -190,7 +214,7 @@ void processTypeNode(AST_NODE* idNodeAsType)
     SymbolTableEntry* entry = retrieveSymbol(idNodeAsType->semantic_value.identifierSemanticValue.identifierName);
     if(!entry || entry->attribute->attributeKind != TYPE_ATTRIBUTE){
         idNodeAsType->dataType = ERROR_TYPE;
-        printErrorMsg(idNodeAsType, SYMBOL_IS_NOT_TYPE);
+        printErrorMsgSpecial(idNodeAsType, idNodeAsType->semantic_value.identifierSemanticValue.identifierName, SYMBOL_IS_NOT_TYPE);
     }else{
         idNodeAsType->semantic_value.identifierSemanticValue.symbolTableEntry = entry;
         if(entry->attribute->attr.typeDescriptor->kind == SCALAR_TYPE_DESCRIPTOR){
@@ -208,13 +232,13 @@ void declareIdList(AST_NODE* declarationNode, SymbolAttributeKind isVariableOrTy
     AST_NODE* typeNode = declarationNode->child;
     AST_NODE* currentNode = typeNode->rightSibling;
     if(typeNode->dataType == VOID_TYPE && isVariableOrTypeAttribute == VARIABLE_ATTRIBUTE){
-        printErrorMsg(declarationNode, VOID_VARIABLE);
+        printErrorMsgSpecial(declarationNode, currentNode->semantic_value.identifierSemanticValue.identifierName, VOID_VARIABLE);
         declarationNode->dataType = ERROR_TYPE;
         return;
     }
     while(currentNode){
         if(declaredLocally(currentNode->semantic_value.identifierSemanticValue.identifierName)){
-            printErrorMsg(currentNode, SYMBOL_REDECLARE);
+            printErrorMsgSpecial(currentNode, currentNode->semantic_value.identifierSemanticValue.identifierName,SYMBOL_REDECLARE);
             declarationNode->dataType = ERROR_TYPE;
         }else{
             SymbolAttribute* attribute = (SymbolAttribute*)malloc(sizeof(SymbolAttribute));
@@ -335,7 +359,7 @@ void checkFunctionCall(AST_NODE* functionCallNode)
     AST_NODE* argListNode = idNode->rightSibling;
     SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
-        printErrorMsg(idNode, SYMBOL_UNDECLARED);
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, SYMBOL_UNDECLARED);
         idNode->dataType = ERROR_TYPE;
         functionCallNode->dataType = ERROR_TYPE;
         return;
@@ -343,7 +367,7 @@ void checkFunctionCall(AST_NODE* functionCallNode)
     //we should check all params no matter if id is function or not
     processGeneralNode(argListNode); //may cause currentArgument ERROR_TYPE
     if(entry->attribute->attributeKind != FUNCTION_SIGNATURE){
-        printErrorMsg(idNode, NOT_FUNCTION_NAME);
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, NOT_FUNCTION_NAME);
         idNode->dataType = ERROR_TYPE;
         functionCallNode->dataType = ERROR_TYPE;
         return;
@@ -362,9 +386,9 @@ void checkFunctionCall(AST_NODE* functionCallNode)
     if(errors){
         functionCallNode->dataType = ERROR_TYPE;
     }else if(currentArgument){
-        printErrorMsg(functionCallNode, TOO_MANY_ARGUMENTS);
+        printErrorMsgSpecial(functionCallNode, idNode->semantic_value.identifierSemanticValue.identifierName, TOO_MANY_ARGUMENTS);
     }else if(currentParameter){
-        printErrorMsg(functionCallNode, TOO_FEW_ARGUMENTS);
+        printErrorMsgSpecial(functionCallNode, idNode->semantic_value.identifierSemanticValue.identifierName, TOO_FEW_ARGUMENTS);
     }else{
         functionCallNode->dataType = entry->attribute->attr.functionSignature->returnType;
     }
@@ -376,10 +400,10 @@ void checkParameterPassing(Parameter* formalParameter, AST_NODE* actualParameter
         return;
     }
     int argumentArray = (actualParameter->dataType == INT_PTR_TYPE || actualParameter->dataType == FLOAT_PTR_TYPE);
-    if(formalParameter->type->kind = SCALAR_TYPE_DESCRIPTOR && argumentArray){
+	if(formalParameter->type->kind == SCALAR_TYPE_DESCRIPTOR && argumentArray){
         printErrorMsgSpecial(actualParameter, formalParameter->parameterName, PASS_ARRAY_TO_SCALAR);
         actualParameter->dataType = ERROR_TYPE;
-    }else if(formalParameter->type->kind = ARRAY_TYPE_DESCRIPTOR && !argumentArray){
+    }else if(formalParameter->type->kind == ARRAY_TYPE_DESCRIPTOR && !argumentArray){
         printErrorMsgSpecial(actualParameter, formalParameter->parameterName, PASS_SCALAR_TO_ARRAY);
         actualParameter->dataType = ERROR_TYPE;
     }
@@ -627,18 +651,18 @@ void processVariableLValue(AST_NODE* idNode)
 {
     SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
-        printErrorMsg(idNode, SYMBOL_UNDECLARED);
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, SYMBOL_UNDECLARED);
         idNode->dataType = ERROR_TYPE;
         return;
     }else{
         idNode->semantic_value.identifierSemanticValue.symbolTableEntry = entry;
 	    switch(entry->attribute->attributeKind){
 	        case TYPE_ATTRIBUTE:
-	            printErrorMsg(idNode, IS_TYPE_NOT_VARIABLE);
+	            printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, IS_TYPE_NOT_VARIABLE);
 	            idNode->dataType = ERROR_TYPE;
 	            return;
 	        case FUNCTION_SIGNATURE:
-	            printErrorMsg(idNode, IS_FUNCTION_NOT_VARIABLE);
+	            printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, IS_FUNCTION_NOT_VARIABLE);
 	            idNode->dataType = ERROR_TYPE;
 	            return;
 	    }
@@ -671,7 +695,7 @@ void processVariableLValue(AST_NODE* idNode)
         }
         int dimInfo = (typeDescriptor->kind == SCALAR_TYPE_DESCRIPTOR) ? 0 : (typeDescriptor->properties.arrayProperties.dimension);
         if(dimInfo == 0){
-            printErrorMsg(idNode, NOT_ARRAY);
+            printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, NOT_ARRAY);
         }else if(dim > dimInfo){
             printErrorMsg(idNode, INCOMPATIBLE_ARRAY_DIMENSION);
         }else if(dim == dimInfo){
@@ -689,18 +713,18 @@ void processVariableRValue(AST_NODE* idNode)
 {
     SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
-        printErrorMsg(idNode, SYMBOL_UNDECLARED);
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, SYMBOL_UNDECLARED);
         idNode->dataType = ERROR_TYPE;
         return;
     }else{
         idNode->semantic_value.identifierSemanticValue.symbolTableEntry = entry;
         switch(entry->attribute->attributeKind){
             case TYPE_ATTRIBUTE:
-                printErrorMsg(idNode, IS_TYPE_NOT_VARIABLE);
+                printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, IS_TYPE_NOT_VARIABLE);
                 idNode->dataType = ERROR_TYPE;
                 return;
             case FUNCTION_SIGNATURE:
-                printErrorMsg(idNode, IS_FUNCTION_NOT_VARIABLE);
+                printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, IS_FUNCTION_NOT_VARIABLE);
                 idNode->dataType = ERROR_TYPE;
                 return;
         }
@@ -732,7 +756,7 @@ void processVariableRValue(AST_NODE* idNode)
         }
         int dimInfo = (typeDescriptor->kind == SCALAR_TYPE_DESCRIPTOR) ? 0 : (typeDescriptor->properties.arrayProperties.dimension);
         if(dimInfo == 0){
-            printErrorMsg(idNode, NOT_ARRAY);
+            printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, NOT_ARRAY);
         }else if(dim > dimInfo){
             printErrorMsg(idNode, INCOMPATIBLE_ARRAY_DIMENSION);
         }else if(dim == dimInfo){
@@ -920,7 +944,7 @@ void declareFunction(AST_NODE* declarationNode)
         declarationNode->dataType = ERROR_TYPE;
     }
     if(declaredLocally(idNode->semantic_value.identifierSemanticValue.identifierName)){
-        printErrorMsg(idNode, SYMBOL_REDECLARE);
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, SYMBOL_REDECLARE);
         declarationNode->dataType = ERROR_TYPE;
     }
     SymbolAttribute* attribute = (SymbolAttribute*)malloc(sizeof(SymbolAttribute));
@@ -946,8 +970,8 @@ void declareFunction(AST_NODE* declarationNode)
         Parameter* param = (Parameter*)malloc(sizeof(Parameter));
         param->next = NULL;
         param->type = (paramNode->dataType == ERROR_TYPE) ? NULL : paramNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.typeDescriptor;
-        param->parameterName = paramNode->semantic_value.identifierSemanticValue.identifierName;
-        if(!nowParam){
+        param->parameterName = paramNode->child->rightSibling->semantic_value.identifierSemanticValue.identifierName;
+		if(!nowParam){
             attribute->attr.functionSignature->parameterList = param;
         }else{
             nowParam->next = param;
@@ -961,7 +985,7 @@ void declareFunction(AST_NODE* declarationNode)
     //block
     processBlockNode(blockNode);
     closeScope();
-    if(declarationNode->dataType){
+    if(declarationNode->dataType == ERROR_TYPE){
         removeSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     }
     if(paramError || blockNode->dataType == ERROR_TYPE){
