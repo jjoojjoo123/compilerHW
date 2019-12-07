@@ -67,6 +67,14 @@ void printErrorMsgSpecial(AST_NODE* node1, char* name2, ErrorMsgKind errorMsgKin
 {
     g_anyErrorOccur = 1;
     printf("Error found in line %d\n", node1->linenumber);
+    /*
+    switch(errorMsgKind)
+    {
+    default:
+        printf("Unhandled case in void printErrorMsg(AST_NODE* node, ERROR_MSG_KIND* errorMsgKind)\n");
+        break;
+    }
+    */
      switch (errorMsgKind) {
         case SYMBOL_UNDECLARED:
             printf("ID <%s> undeclared.\n", name2);
@@ -100,7 +108,13 @@ void printErrorMsg(AST_NODE* node, ErrorMsgKind errorMsgKind)
 {
     g_anyErrorOccur = 1;
     printf("Error found in line %d\n", node->linenumber);
-    
+    /*
+    switch(errorMsgKind)
+    {
+        printf("Unhandled case in void printErrorMsg(AST_NODE* node, ERROR_MSG_KIND* errorMsgKind)\n");
+        break;
+    }
+    */
     switch (errorMsgKind) {
         case RETURN_TYPE_UNMATCH:
             puts("Incompatible return type.");
@@ -237,6 +251,7 @@ void declareIdList(AST_NODE* declarationNode, SymbolAttributeKind isVariableOrTy
         return;
     }
     while(currentNode){
+    	
         if(declaredLocally(currentNode->semantic_value.identifierSemanticValue.identifierName)){
             printErrorMsgSpecial(currentNode, currentNode->semantic_value.identifierSemanticValue.identifierName,SYMBOL_REDECLARE);
             declarationNode->dataType = ERROR_TYPE;
@@ -350,12 +365,47 @@ void checkIfStmt(AST_NODE* ifNode)
 
 void checkWriteFunction(AST_NODE* functionCallNode)
 {
-    //What is this?
+    AST_NODE* idNode = functionCallNode->child;
+
+    AST_NODE* actualParameterList = idNode->rightSibling;
+    processGeneralNode(actualParameterList);
+
+    AST_NODE* actualParameter = actualParameterList->child;
+    
+    int actualParameterNumber = 0;
+    while(actualParameter)
+    {
+        ++actualParameterNumber;
+        if(actualParameter->dataType == ERROR_TYPE){
+            functionCallNode->dataType = ERROR_TYPE;
+        }else if(actualParameter->dataType != INT_TYPE &&
+                actualParameter->dataType != FLOAT_TYPE &&
+                actualParameter->dataType != CONST_STRING_TYPE){
+            printErrorMsg(actualParameter, PARAMETER_TYPE_UNMATCH);
+            functionCallNode->dataType = ERROR_TYPE;
+        }
+        actualParameter = actualParameter->rightSibling;
+    }
+    
+    if(actualParameterNumber > 1){
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, TOO_MANY_ARGUMENTS);
+        functionCallNode->dataType = ERROR_TYPE;
+    }else if(actualParameterNumber < 1){
+        printErrorMsgSpecial(idNode, idNode->semantic_value.identifierSemanticValue.identifierName, TOO_FEW_ARGUMENTS);
+        functionCallNode->dataType = ERROR_TYPE;
+    }else{
+        functionCallNode->dataType = VOID_TYPE;
+    }
 }
 
 void checkFunctionCall(AST_NODE* functionCallNode)
 {
     AST_NODE* idNode = functionCallNode->child;
+    if(strcmp(idNode->semantic_value.identifierSemanticValue.identifierName, "write") == 0){
+        checkWriteFunction(functionCallNode);
+        return;
+    }
+    
     AST_NODE* argListNode = idNode->rightSibling;
     SymbolTableEntry* entry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
     if(!entry){
