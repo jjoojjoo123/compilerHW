@@ -88,11 +88,12 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	g_currentFunctionName = functionIdNode->semantic_value.identifierSemanticValue.identifierName;
 
 	fprintf(outputFile, ".text\n");
-	if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0) {
+	/*if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0) {
 		fprintf(outputFile, "_start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
 	} else {
 		fprintf(outputFile, "%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
-	}
+	}*/
+	fprintf(outputFile, "_start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
 
 	//prologue
 	fprintf(outputFile, "sd ra, 0(sp)\n");
