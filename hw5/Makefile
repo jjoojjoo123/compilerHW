@@ -1,5 +1,5 @@
 TARGET = parser
-OBJECT = parser.tab.c parser.tab.o lex.yy.c alloc.o functions.o semanticAnalysis.o symbolTable.o gencode.o
+OBJECT = parser.tab.c parser.tab.o lex.yy.c alloc.o functions.o semanticAnalysis.o symbolTable.o gencode.o offset.o
 OUTPUT = parser.output parser.tab.h
 CC = gcc -g
 LEX = flex
@@ -12,7 +12,7 @@ parser: parser.tab.o alloc.o functions.o symbolTable.o semanticAnalysis.o
 
 parser.tab.o: parser.tab.c lex.yy.c alloc.o functions.c symbolTable.o semanticAnalysis.o
 	$(CC) -c parser.tab.c
-    
+
 semanticAnalysis.o: semanticAnalysis.c symbolTable.o
 	$(CC) -c semanticAnalysis.c
 
@@ -33,6 +33,9 @@ functions.o: functions.c
 
 gencode.o: gencode.c
 	$(CC) -c gencode.c
+
+offset.o: offset.c
+	$(CC) -c offset.c
 
 clean:
 	rm -f $(TARGET) $(OBJECT) $(OUTPUT)

@@ -8,7 +8,7 @@
 #include "header.h"
 #include "symbolTable.h"
 #include "gencode.h"
-#include "gencode.c"
+#include "offset.h"
 int linenumber = 1;
 AST_NODE *prog;
 
@@ -770,6 +770,7 @@ char *argv[];
 
      symbolTableEnd();
      if (!g_anyErrorOccur) {
+        offsetAnalysis(prog);
         FILE* output = fopen("output.s", "w");
         gen_program(prog, output);
         printf("Parsing completed. No errors found.\n");
