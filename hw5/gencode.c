@@ -8,6 +8,9 @@ int label_number = 0;
 FILE* outputFile = NULL;
 char* g_currentFunctionName = NULL;
 
+#define write0(_l) fprintf(outputfile, _l)
+#define write1(_l) fprintf(outputfile, "\t" _l)
+
 void gen_program(AST_NODE* programNode, FILE* output)
 {
 	outputFile = output;
@@ -26,9 +29,9 @@ void gen_programNode(AST_NODE *programNode)
 	while(declList)
 	{
 		if(declList->nodeType == VARIABLE_DECL_LIST_NODE){
-			fprintf(outputFile, ".data\n");
+			write1(".data\n");
 			gen_globalVar(declList);
-			fprintf(outputFile, ".text\n");
+			write1(".text\n");
 		}
 		else if(declList->nodeType == DECLARATION_NODE){
 			gen_functionDecl(declList);
@@ -62,15 +65,15 @@ void gen_globalVar(AST_NODE* varDeclListNode)
 				
 				if(idTypeDescriptor->kind == SCALAR_TYPE_DESCRIPTOR){
 					if(idTypeDescriptor->properties.dataType == INT_TYPE){
-						fprintf(outputFile, "_g_%s: .word %d\n", idSymbolTableEntry->name, (int)value);
+						write1("_g_%s: .word %d\n", idSymbolTableEntry->name, (int)value);
 					}
 					else if(idTypeDescriptor->properties.dataType == FLOAT_TYPE){
-						fprintf(outputFile, "_g_%s: .float %f\n", idSymbolTableEntry->name, value);
+						write1("_g_%s: .float %f\n", idSymbolTableEntry->name, value);
 					}
 				}
 				else if(idTypeDescriptor->kind == ARRAY_TYPE_DESCRIPTOR){
 					//int variableSize = getVariableSize(idTypeDescriptor);
-					//fprintf(outputFile, "_g_%s: .space %d\n", idSymbolTableEntry->name, variableSize);
+					//write1("_g_%s: .space %d\n", idSymbolTableEntry->name, variableSize);
 				}
 				idNode = idNode->rightSibling;
 			}
@@ -87,17 +90,17 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	g_currentFunctionName = functionIdNode->semantic_value.identifierSemanticValue.identifierName;
 
-	fprintf(outputFile, ".text\n");
-	fprintf(outputFile, "_start_%s:\n", g_currentFunctionName);
+	write1(".text\n");
+	write0("_start_%s:\n", g_currentFunctionName);
 
 	//prologue
-	fprintf(outputFile, "sd ra, 0(sp)\n");
-	fprintf(outputFile, "sd fp, -8(sp)\n");
-	fprintf(outputFile, "addi fp, sp, -8\n");
-	fprintf(outputFile, "add sp, sp, -16\n");
-	fprintf(outputFile, "la ra, _frameSize_%s\n", g_currentFunctionName);
-	fprintf(outputFile, "lw ra, 0(ra)\n");
-	fprintf(outputFile, "sub sp, sp, ra\n");
+	write1("sd ra, 0(sp)\n");
+	write1("sd fp, -8(sp)\n");
+	write1("addi fp, sp, -8\n");
+	write1("add sp, sp, -16\n");
+	write1("la ra, _frameSize_%s\n", g_currentFunctionName);
+	write1("lw ra, 0(ra)\n");
+	write1("sub sp, sp, ra\n");
 	//printStoreRegister(outputFile);
 
 	//resetRegisterTable(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR);
@@ -111,15 +114,15 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	}
 
 	//epilogue
-	fprintf(outputFile, "_end_%s:\n", g_currentFunctionName);
+	write0("_end_%s:\n", g_currentFunctionName);
 	//printRestoreRegister(outputFile);
-	fprintf(outputFile, "ld ra, 8(fp)\n");
-	fprintf(outputFile, "mov sp, fp\n");
-	fprintf(outputFile, "add sp, sp, 8\n");
-	fprintf(outputFile, "ld fp, 0(fp)\n");
-	fprintf(outputFile, "jr ra\n");
-	fprintf(outputFile, ".data\n");
-	fprintf(outputFile, "_frameSize_%s: .word %d\n", g_currentFunctionName, functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset / 4);
+	write1("ld ra, 8(fp)\n");
+	write1("mov sp, fp\n");
+	write1("add sp, sp, 8\n");
+	write1("ld fp, 0(fp)\n");
+	write1("jr ra\n");
+	write1(".data\n");
+	write1("_frameSize_%s: .word %d\n", g_currentFunctionName, functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset / 4);
 	/*int frameSize = abs(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR) + 
 		(INT_REGISTER_COUNT + INT_WORK_REGISTER_COUNT + INT_OTHER_REGISTER_COUNT + FLOAT_REGISTER_COUNT + FLOAT_WORK_REGISTER_COUNT) * 4 +
 		g_pseudoRegisterTable.isAllocatedVector->size * 4;
@@ -132,9 +135,9 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 		frameSize=frameSize+4;	
 	}
 	if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0){
-		fprintf(outputFile, "_frameSize_main: .word %d\n", frameSize+8);
+		write1("_frameSize_main: .word %d\n", frameSize+8);
 	}else{
-		fprintf(outputFile, "_frameSize_%s: .word %d\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName, 
+		write1("_frameSize_%s: .word %d\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName, 
 								frameSize+8);
 	}
 	*/
@@ -232,39 +235,39 @@ void gen_exprNode(AST_NODE* exprNode)
 					if(leftOp->dataType == INT_TYPE)
 						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
 					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);
-					fprintf(outputFile, "fcmp %s, #0.0\n", leftOpRegName);
-					fprintf(outputFile, "beq _booleanFalse%d\n", labelNumber);
+					write1("fcmp %s, #0.0\n", leftOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
 					codeGenExprRelatedNode(rightOp);
 					if(rightOp->dataType == INT_TYPE)
 						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
 					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);
-					fprintf(outputFile, "fcmp %s, #0.0\n", rightOpRegName);
-					fprintf(outputFile, "beq _booleanFalse%d\n", labelNumber);
-					fprintf(outputFile, "_booleanTrue%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", exprRegName, 1);
-					fprintf(outputFile, "b _booleanExit%d\n", labelNumber);
-					fprintf(outputFile, "_booleanFalse%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", exprRegName, 0);
-					fprintf(outputFile, "_booleanExit%d:\n", labelNumber);
+					write1("fcmp %s, #0.0\n", rightOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 1);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 0);
+					write1("_booleanExit%d:\n", labelNumber);
 				} else {
 					codeGenExprRelatedNode(leftOp);
 					if(leftOp->dataType == INT_TYPE)
 						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
 					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);// need think for isAddr
-					fprintf(outputFile, "fcmp %s, #0.0\n", leftOpRegName);
-					fprintf(outputFile, "bne _booleanTrue%d\n", labelNumber);
+					write1("fcmp %s, #0.0\n", leftOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
 					codeGenExprRelatedNode(rightOp);
 					if(rightOp->dataType == INT_TYPE)
 						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
 					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);// need think for isAddr
-					fprintf(outputFile, "fcmp %s, #0.0\n", rightOpRegName);
-					fprintf(outputFile, "bne _booleanTrue%d\n", labelNumber);
-					fprintf(outputFile, "_booleanFalse%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", exprRegName, 0);
-					fprintf(outputFile, "b _booleanExit%d\n", labelNumber);
-					fprintf(outputFile, "_booleanTrue%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", exprRegName, 1);
-					fprintf(outputFile, "_booleanExit%d:\n", labelNumber);
+					write1("fcmp %s, #0.0\n", rightOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 0);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 1);
+					write1("_booleanExit%d:\n", labelNumber);
 				}
 				//freeRegister(FLOAT_REG, leftOp->registerIndex);
 				//freeRegister(FLOAT_REG, rightOp->registerIndex);
@@ -272,33 +275,33 @@ void gen_exprNode(AST_NODE* exprNode)
 				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
 					codeGenExprRelatedNode(leftOp);
 					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-					fprintf(outputFile, "cmp %s, #0\n", leftOpRegName);
-					fprintf(outputFile, "beq _booleanFalse%d\n", labelNumber);
+					write1("cmp %s, #0\n", leftOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
 					codeGenExprRelatedNode(rightOp);
 					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-					fprintf(outputFile, "cmp %s, #0\n", rightOpRegName);
-					fprintf(outputFile, "beq _booleanFalse%d\n", labelNumber);
-					fprintf(outputFile, "_booleanTrue%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", leftOpRegName, 1);
-					fprintf(outputFile, "b _booleanExit%d\n", labelNumber);
-					fprintf(outputFile, "_booleanFalse%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", leftOpRegName, 0);
-					fprintf(outputFile, "_booleanExit%d:\n", labelNumber);
+					write1("cmp %s, #0\n", rightOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 1);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 0);
+					write1("_booleanExit%d:\n", labelNumber);
 				} else {
 					codeGenExprRelatedNode(leftOp);
 					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-					fprintf(outputFile, "cmp %s, #0\n", leftOpRegName);
-					fprintf(outputFile, "bne _booleanTrue%d\n", labelNumber);
+					write1("cmp %s, #0\n", leftOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
 					codeGenExprRelatedNode(rightOp);
 					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-					fprintf(outputFile, "cmp %s, #0\n", rightOpRegName);
-					fprintf(outputFile, "bne _booleanTrue%d\n", labelNumber);
-					fprintf(outputFile, "_booleanFalse%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", leftOpRegName, 0);
-					fprintf(outputFile, "b _booleanExit%d\n", labelNumber);
-					fprintf(outputFile, "_booleanTrue%d:\n", labelNumber);
-					fprintf(outputFile, "mov %s, #%d\n", leftOpRegName, 1);
-					fprintf(outputFile, "_booleanExit%d:\n", labelNumber);
+					write1("cmp %s, #0\n", rightOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 0);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 1);
+					write1("_booleanExit%d:\n", labelNumber);
 				}
 				exprNode->registerIndex = leftOp->registerIndex;
 				freeRegister(INT_REG, rightOp->registerIndex);
@@ -519,23 +522,23 @@ void gen_functionCall(AST_NODE* functionCallNode)
 		{
 			case INT_TYPE:
 				codeGenPrepareRegister(INT_REG, firstParameter->registerIndex, 1, 0, &parameterRegName);
-				fprintf(outputfile, "lw %s, -4(fp)", parameterRegName);
-				fprintf(outputFile, "mv a0, %s\n", parameterRegName);
-				fprintf(outputFile, "jal _write_int\n");
+				write1("lw %s, -4(fp)", parameterRegName);
+				write1("mv a0, %s\n", parameterRegName);
+				write1("jal _write_int\n");
 				freeRegister(INT_REG, firstParameter->registerIndex);
 				break;
 			case FLOAT_TYPE:
 				codeGenPrepareRegister(FLOAT_REG, firstParameter->registerIndex, 1, 0, &parameterRegName);
-				fprintf(outputfile, "lw %s, -8(fp)", parameterRegName);
-				fprintf(outputFile, "fmv.s fa0, %s\n", parameterRegName);
-				fprintf(outputFile, "jal _write_float\n");
+				write1("lw %s, -8(fp)", parameterRegName);
+				write1("fmv.s fa0, %s\n", parameterRegName);
+				write1("jal _write_float\n");
 				break;
 			case CONST_STRING_TYPE:
 				int constantLabelNumber = codeGenConstantLabel(STRINGC, &firstParameter->semantic_value.const1->const_u.sc);
 				codeGenPrepareRegister(INT_REG, firstParameter->registerIndex, 1, 0, &parameterRegName);
-				fprintf(outputfile, "lui %s, %%hi(_CONSTANT_%d)\n", parameterRegName, constantLabelNumber);
-				fprintf(outputfile, "addi a0, %s, %%lo(_CONSTANT_%d)\n", parameterRegName, constantLabelNumber);
-				fprintf(outputfile, "jal _write_str\n");
+				write1("lui %s, %%hi(_CONSTANT_%d)\n", parameterRegName, constantLabelNumber);
+				write1("addi a0, %s, %%lo(_CONSTANT_%d)\n", parameterRegName, constantLabelNumber);
+				write1("jal _write_str\n");
 				freeRegister(INT_REG, firstParameter->registerIndex);
 				break;
 			default:
@@ -549,11 +552,11 @@ void gen_functionCall(AST_NODE* functionCallNode)
 
 	if(strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "read") == 0)
 	{
-		fprintf(outputfile, "jal _read_int\n");
+		write1("jal _read_int\n");
 	}
 	else if(strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "fread") == 0)
 	{
-		fprintf(outputfile, "jal _read_float\n");
+		write1("jal _read_float\n");
 	}
 	else
 	{
@@ -561,17 +564,17 @@ void gen_functionCall(AST_NODE* functionCallNode)
 			AST_NODE* traverseParameter = parameterList->child;
 			//hw6
 			codeGenStoreParam(traverseParameter, id_sym(functionIdNode)->attribute->attr.functionSignature->parameterList);
-			fprintf(g_codeGenOutputFp, "jal _start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
+			write1("jal _start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
 			int paramOffset = 0;
 			while(traverseParameter) {
 				paramOffset += 8;
 				traverseParameter = traverseParameter->rightSibling;
 			}
 			if (paramOffset > 0) {
-				fprintf(g_codeGenOutputFp, "add sp, sp, %d\n", paramOffset);
+				write1("add sp, sp, %d\n", paramOffset);
 			}
 		} else {
-			fprintf(g_codeGenOutputFp, "jal _start_MAIN\n");
+			write1("jal _start_MAIN\n");
 		}
 	}
 
@@ -585,7 +588,7 @@ void gen_functionCall(AST_NODE* functionCallNode)
 			char* returnIntRegName = NULL;
 			codeGenPrepareRegister(INT_REG, functionCallNode->registerIndex, 0, 0, &returnIntRegName);
 
-			fprintf(g_codeGenOutputFp, "mv %s, w0\n", returnIntRegName);
+			write1("mv %s, w0\n", returnIntRegName);
 
 			codeGenSaveToMemoryIfPsuedoRegister(INT_REG, functionCallNode->registerIndex, returnIntRegName);
 		}
@@ -595,7 +598,7 @@ void gen_functionCall(AST_NODE* functionCallNode)
 			char* returnfloatRegName = NULL;
 			codeGenPrepareRegister(FLOAT_REG, functionCallNode->registerIndex, 0, 0, &returnfloatRegName);
 
-			fprintf(g_codeGenOutputFp, "fmv.s %s, s0\n", returnfloatRegName);
+			write1("fmv.s %s, s0\n", returnfloatRegName);
 
 			codeGenSaveToMemoryIfPsuedoRegister(INT_REG, functionCallNode->registerIndex, returnfloatRegName);
 		}
