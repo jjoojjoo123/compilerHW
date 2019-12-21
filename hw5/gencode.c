@@ -88,23 +88,14 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	g_currentFunctionName = functionIdNode->semantic_value.identifierSemanticValue.identifierName;
 
 	fprintf(outputFile, ".text\n");
-	/*if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0) {
-		fprintf(outputFile, "_start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
-	} else {
-		fprintf(outputFile, "%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
-	}*/
-	fprintf(outputFile, "_start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
+	fprintf(outputFile, "_start_%s:\n", g_currentFunctionName);
 
 	//prologue
 	fprintf(outputFile, "sd ra, 0(sp)\n");
 	fprintf(outputFile, "sd fp, -8(sp)\n");
 	fprintf(outputFile, "addi fp, sp, -8\n");
 	fprintf(outputFile, "add sp, sp, -16\n");
-	if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0) {
-		fprintf(outputFile, "la ra, _frameSize_main\n");
-	} else {
-		fprintf(outputFile, "la ra, _frameSize_%s\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
-	}
+	fprintf(outputFile, "la ra, _frameSize_%s\n", g_currentFunctionName);
 	fprintf(outputFile, "lw ra, 0(ra)\n");
 	fprintf(outputFile, "sub sp, sp, ra\n");
 	//printStoreRegister(outputFile);
@@ -126,11 +117,9 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	fprintf(outputFile, "mov sp, fp\n");
 	fprintf(outputFile, "add sp, sp, 8\n");
 	fprintf(outputFile, "ld fp, 0(fp)\n");
-	if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0)
-	{
-		fprintf(outputFile, "jr ra\n");
-	}
+	fprintf(outputFile, "jr ra\n");
 	fprintf(outputFile, ".data\n");
+	fprintf(outputFile, "_frameSize_%s: .word %d\n", g_currentFunctionName, functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset / 4);
 	/*int frameSize = abs(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR) + 
 		(INT_REGISTER_COUNT + INT_WORK_REGISTER_COUNT + INT_OTHER_REGISTER_COUNT + FLOAT_REGISTER_COUNT + FLOAT_WORK_REGISTER_COUNT) * 4 +
 		g_pseudoRegisterTable.isAllocatedVector->size * 4;
@@ -582,7 +571,7 @@ void gen_functionCall(AST_NODE* functionCallNode)
 				fprintf(g_codeGenOutputFp, "add sp, sp, %d\n", paramOffset);
 			}
 		} else {
-			fprintf(g_codeGenOutputFp, "jal %s\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
+			fprintf(g_codeGenOutputFp, "jal _start_MAIN\n");
 		}
 	}
 
