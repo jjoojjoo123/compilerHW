@@ -80,6 +80,7 @@ void initializeSymbolTable()
     intAttribute->attr.typeDescriptor = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
     intAttribute->attr.typeDescriptor->kind = SCALAR_TYPE_DESCRIPTOR;
     intAttribute->attr.typeDescriptor->properties.dataType = INT_TYPE;
+    intAttribute->offsetInAR = -1;
     enterSymbol(SYMBOL_TABLE_INT_NAME, intAttribute);
 
     SymbolAttribute* floatAttribute = (SymbolAttribute*)malloc(sizeof(SymbolAttribute));
@@ -87,6 +88,7 @@ void initializeSymbolTable()
     floatAttribute->attr.typeDescriptor = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
     floatAttribute->attr.typeDescriptor->kind = SCALAR_TYPE_DESCRIPTOR;
     floatAttribute->attr.typeDescriptor->properties.dataType = FLOAT_TYPE;
+    floatAttribute->offsetInAR = -1;
     enterSymbol(SYMBOL_TABLE_FLOAT_NAME, floatAttribute);
 
     SymbolAttribute* voidAttribute = (SymbolAttribute*)malloc(sizeof(SymbolAttribute));
@@ -94,6 +96,7 @@ void initializeSymbolTable()
     voidAttribute->attr.typeDescriptor = (TypeDescriptor*)malloc(sizeof(TypeDescriptor));
     voidAttribute->attr.typeDescriptor->kind = SCALAR_TYPE_DESCRIPTOR;
     voidAttribute->attr.typeDescriptor->properties.dataType = VOID_TYPE;
+    voidAttribute->offsetInAR = -1;
     enterSymbol(SYMBOL_TABLE_VOID_NAME, voidAttribute);
 
     SymbolAttribute* readAttribute = NULL;
@@ -103,6 +106,7 @@ void initializeSymbolTable()
     readAttribute->attr.functionSignature->returnType = INT_TYPE;
     readAttribute->attr.functionSignature->parameterList = NULL;
     readAttribute->attr.functionSignature->parametersCount = 0;
+    readAttribute->offsetInAR = -1;
     enterSymbol(SYMBOL_TABLE_SYS_LIB_READ, readAttribute);
 
     SymbolAttribute* freadAttribute = NULL;
@@ -112,6 +116,7 @@ void initializeSymbolTable()
     freadAttribute->attr.functionSignature->returnType = FLOAT_TYPE;
     freadAttribute->attr.functionSignature->parameterList = NULL;
     freadAttribute->attr.functionSignature->parametersCount = 0;
+    freadAttribute->offsetInAR = -1;
     enterSymbol(SYMBOL_TABLE_SYS_LIB_FREAD, freadAttribute);
 }
 

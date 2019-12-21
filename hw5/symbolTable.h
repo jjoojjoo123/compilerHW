@@ -68,6 +68,7 @@ typedef struct SymbolAttribute
         TypeDescriptor* typeDescriptor;
         FunctionSignature* functionSignature;
     } attr;
+    int offsetInAR;
 } SymbolAttribute;
 
 typedef struct SymbolTableEntry

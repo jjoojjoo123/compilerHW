@@ -8,6 +8,7 @@
 #include "header.h"
 #include "symbolTable.h"
 #include "gencode.h"
+#include "gencode.c"
 int linenumber = 1;
 AST_NODE *prog;
 
