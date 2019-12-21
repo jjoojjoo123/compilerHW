@@ -1,7 +1,7 @@
 
-hw5/gencode.c
-hw5/gencode.h
-hw5/header.h
-hw5/parser.y
-hw5/symbolTable.c
-hw5/symbolTable.h
+hw5/alloc.o
+hw5/functions.o
+hw5/parser.output
+hw5/parser.tab.o
+hw5/symbolTable.o
+hw5/semanticAnalysis.o
