@@ -8,8 +8,8 @@ int label_number = 0;
 FILE* outputFile = NULL;
 char* g_currentFunctionName = NULL;
 
-#define write0(_l) fprintf(outputfile, _l)
-#define write1(_l) fprintf(outputfile, "\t" _l)
+#define write0(...) fprintf(outputfile, __VA_ARGS__)
+#define write1(...) fprintf(outputfile, "\t" __VA_ARGS__)
 
 void gen_program(AST_NODE* programNode, FILE* output)
 {
