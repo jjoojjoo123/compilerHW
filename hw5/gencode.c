@@ -8,6 +8,23 @@ int label_number = 0;
 FILE* outputFile = NULL;
 char* g_currentFunctionName = NULL;
 
+char* a0 = "a0";
+char* fa0 = "fa0";
+
+char* int_reg[] = {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11"};
+char* float_reg[] = {"fs0", "fs1", "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9", "fs10", "fs11"};
+
+#define N_INTREG (sizeof(int_reg) / sizeof(char*))
+#define N_FLOATREG (sizeof(float_reg) / sizeof(char*))
+
+int used_int_reg = 0;
+int used_float_reg = 0;
+
+#define get_int_reg() int_reg[(used_int_reg++) / N_INTREG]
+#define get_float_reg() float_reg[(used_float_reg++) / N_FLOATREG]
+
+#define BASE_FRAMESIZE (N_INTREG * 4 + N_FLOATREG * 4)
+
 #define write0(...) fprintf(outputfile, __VA_ARGS__)
 #define write1(...) fprintf(outputfile, "\t" __VA_ARGS__)
 
@@ -90,7 +107,7 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	g_currentFunctionName = functionIdNode->semantic_value.identifierSemanticValue.identifierName;
 
-	write1(".text\n");
+	write0(".text\n");
 	write0("_start_%s:\n", g_currentFunctionName);
 
 	//prologue
@@ -105,6 +122,14 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	//resetRegisterTable(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR);
 
+	int reg_count = 0;
+	for(int i = 0;i < N_INTREG;i++){
+		write1("sw %s %d(sp)", int_reg[i], (++reg_count) * 4)
+	}
+	for(int i = 0;i < N_FLOATREG;i++){
+		write1("sw %s %d(sp)", float_reg[i], (++reg_count) * 4)
+	}
+
 	AST_NODE* blockNode = functionIdNode->rightSibling->rightSibling;
 	AST_NODE *listNode = blockNode->child;
 	while(listNode)
@@ -115,6 +140,15 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	//epilogue
 	write0("_end_%s:\n", g_currentFunctionName);
+
+	reg_count = 0;
+	for(int i = 0;i < N_INTREG;i++){
+		write1("lw %s %d(sp)", int_reg[i], (++reg_count) * 4)
+	}
+	for(int i = 0;i < N_FLOATREG;i++){
+		write1("lw %s %d(sp)", float_reg[i], (++reg_count) * 4)
+	}
+
 	//printRestoreRegister(outputFile);
 	write1("ld ra, 8(fp)\n");
 	write1("mov sp, fp\n");
@@ -122,7 +156,8 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	write1("ld fp, 0(fp)\n");
 	write1("jr ra\n");
 	write1(".data\n");
-	write1("_frameSize_%s: .word %d\n", g_currentFunctionName, functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset / 4);
+	//offset is a minus number
+	write1("_frameSize_%s: .word %d\n", g_currentFunctionName, (BASE_FRAMESIZE - functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset) / 4);
 	/*int frameSize = abs(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR) + 
 		(INT_REGISTER_COUNT + INT_WORK_REGISTER_COUNT + INT_OTHER_REGISTER_COUNT + FLOAT_REGISTER_COUNT + FLOAT_WORK_REGISTER_COUNT) * 4 +
 		g_pseudoRegisterTable.isAllocatedVector->size * 4;
