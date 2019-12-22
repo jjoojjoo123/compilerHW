@@ -295,8 +295,56 @@ void gen_blockNode(AST_NODE* blockNode)
 	}
 }
 
-int gen_exprRelatedNode(AST_NODE* exprNode)
+void gen_exprRelatedNode(AST_NODE* exprRelatedNode){
+	switch(exprRelatedNode->nodeType){
+		case EXPR_NODE:
+			gen_exprNode(exprRelatedNode);
+			break;
+		case STMT_NODE:
+	        //function call
+	        gen_functionCall(exprRelatedNode);
+	        break;
+	    case IDENTIFIER_NODE:
+	        gen_idNode(exprRelatedNode);
+	        break;
+	    case CONST_VALUE_NODE:
+	        gen_constNode(exprRelatedNode);
+	        break;
+	}
+}
+
+void gen_idNode(AST_NODE* idNode){
+	//
+}
+
+void gen_constNode(AST_NODE* constNode){
+	if(exprNode->dataType == INT_TYPE){
+		exprNode->regType = INT_REG;
+		exprNode->registerIndex = get_int_reg();
+		write1("li %s, %d\n", int_reg[exprNode->registerIndex], constNode->semantic_value.const1->const_u.intval);
+	}else{
+		float f = constNode->semantic_value.const1->const_u.fval;
+		exprNode->regType = FLOAT_REG;
+		exprNode->registerIndex = get_float_reg();
+		write1("li %s, %d\n", float_reg[exprNode->registerIndex], *(int*)(&f));
+	}
+}
+
+void gen_exprNode(AST_NODE* exprNode)
 {
+	if(exprNode->semantic_value.exprSemanticValue.isConstEval){
+		if(exprNode->dataType == INT_TYPE){
+			exprNode->regType = INT_REG;
+			exprNode->registerIndex = get_int_reg();
+			write1("li %s, %d\n", int_reg[exprNode->registerIndex], exprNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
+		}else{
+			float f = exprNode->semantic_value.exprSemanticValue.constEvalValue.fValue;
+			exprNode->regType = FLOAT_REG;
+			exprNode->registerIndex = get_float_reg();
+			write1("li %s, %d\n", float_reg[exprNode->registerIndex], *(int*)(&f));
+		}
+		return;
+	}
 	if(exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION)
 	{
 		switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp){
@@ -760,15 +808,40 @@ void gen_functionCall(AST_NODE* functionCallNode)
 		if (strcmp(functionIdNode->semantic_value.identifierSemanticValue.identifierName, "MAIN") != 0) {
 			AST_NODE* traverseParameter = parameterList->child;
 			//hw6
-			codeGenStoreParam(traverseParameter, id_sym(functionIdNode)->attribute->attr.functionSignature->parameterList);
-			write1("jal _start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
 			int paramOffset = 0;
 			while(traverseParameter) {
 				paramOffset += 8;
 				traverseParameter = traverseParameter->rightSibling;
 			}
-			if (paramOffset > 0) {
-				write1("add sp, sp, %d\n", paramOffset);
+			if(paramOffset){
+				write1("subi sp, sp, %d\n", paramOffset);
+				traverseParameter = parameterList->child;
+				paramOffset = 0;
+				while(traverseParameter) {
+					gen_exprRelatedNode(traverseParameter);
+					int index = traverseParameter->registerIndex;
+					switch(traverseParameter->regType){
+						case INT_REG:
+							write1("sw %s, (%d)sp\n", int_reg[index], 8 + paramOffset);
+							free_int_reg(index);
+							break;
+						case FLOAT_REG:
+							write1("sw %s, (%d)sp\n", float_reg[index], 8 + paramOffset);
+							free_float_reg(index);
+							break;
+						case PTR_REG:
+							write1("sd %s, (%d)sp\n", int_reg[index], 8 + paramOffset);
+							free_int_reg(index);
+							break;
+						default:
+					}
+					paramOffset += 8;
+					traverseParameter = traverseParameter->rightSibling;
+				}
+			}
+			write1("jal _start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
+			if (paramOffset) {
+				write1("addi sp, sp, %d\n", paramOffset);
 			}
 		} else {
 			write1("jal _start_MAIN\n");

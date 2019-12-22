@@ -151,7 +151,8 @@ typedef enum RegisterType
 {
     NONE_REG,
     INT_REG,
-    FLOAT_REG
+    FLOAT_REG,
+    PTR_REG
 } RegisterType;
 
 struct AST_NODE {
