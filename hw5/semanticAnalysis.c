@@ -1096,13 +1096,13 @@ void processConstValueNode(AST_NODE* constValueNode)
     {
 	case INTEGERC:
         constValueNode->dataType = INT_TYPE;
-        constValueNode->semantic_value.exprSemanticValue.constEvalValue.iValue =
-            constValueNode->semantic_value.const1->const_u.intval;
+        //constValueNode->semantic_value.exprSemanticValue.constEvalValue.iValue =
+         //   constValueNode->semantic_value.const1->const_u.intval;
 		break;
 	case FLOATC:
         constValueNode->dataType = FLOAT_TYPE;
-        constValueNode->semantic_value.exprSemanticValue.constEvalValue.fValue =
-            constValueNode->semantic_value.const1->const_u.fval;
+        //constValueNode->semantic_value.exprSemanticValue.constEvalValue.fValue =
+        //    constValueNode->semantic_value.const1->const_u.fval;
 		break;
 	case STRINGC:
         constValueNode->dataType = CONST_STRING_TYPE;
