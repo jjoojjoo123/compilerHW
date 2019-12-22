@@ -314,227 +314,104 @@ int gen_exprRelatedNode(AST_NODE* exprNode)
 		}
 		AST_NODE* leftOp = exprNode->child;
 		AST_NODE* rightOp = leftOp->rightSibling;
-		if (exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_OR || exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_AND) {
-			//hw6
-			/*int labelNumber = getLabelNumber();
-			char *leftOpRegName, *rightOpRegName;
-
-			if(leftOp->dataType == FLOAT_TYPE || rightOp->dataType == FLOAT_TYPE) {
-				char *exprRegName;
-				exprNode->registerIndex = getRegister(INT_REG);
-				codeGenPrepareRegister(INT_REG, exprNode->registerIndex, 0, 0, &exprRegName);
-				
-				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
-					gen_exprRelatedNode(leftOp);
-					if(leftOp->dataType == INT_TYPE)
-						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);
-					write1("fcmp %s, #0.0\n", leftOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					if(rightOp->dataType == INT_TYPE)
-						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);
-					write1("fcmp %s, #0.0\n", rightOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 1);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 0);
-					write1("_booleanExit%d:\n", labelNumber);
-				} else {
-					codeGenExprRelatedNode(leftOp);
-					if(leftOp->dataType == INT_TYPE)
-						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);// need think for isAddr
-					write1("fcmp %s, #0.0\n", leftOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					if(rightOp->dataType == INT_TYPE)
-						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);// need think for isAddr
-					write1("fcmp %s, #0.0\n", rightOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 0);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 1);
-					write1("_booleanExit%d:\n", labelNumber);
-				}
-				//freeRegister(FLOAT_REG, leftOp->registerIndex);
-				//freeRegister(FLOAT_REG, rightOp->registerIndex);
-			} else if (exprNode->dataType == INT_TYPE) {
-				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
-					codeGenExprRelatedNode(leftOp);
-					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-					write1("cmp %s, #0\n", leftOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-					write1("cmp %s, #0\n", rightOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 1);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 0);
-					write1("_booleanExit%d:\n", labelNumber);
-				} else {
-					codeGenExprRelatedNode(leftOp);
-					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-					write1("cmp %s, #0\n", leftOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-					write1("cmp %s, #0\n", rightOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 0);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 1);
-					write1("_booleanExit%d:\n", labelNumber);
-				}
-				exprNode->registerIndex = leftOp->registerIndex;
-				freeRegister(INT_REG, rightOp->registerIndex);
-			}*/
-		} else {
-			gen_exprRelatedNode(leftOp);
-			gen_exprRelatedNode(rightOp);
-			int lindex = leftOp->registerIndex;
-			int rindex = rightOp->registerIndex;
-			int castFindex = -1, castIindex = -1;
-			if(leftOp->regType == FLOAT_REG || rightOp->regType == FLOAT_REG)
-			{
-				char *rs1, *rs2, *rd;
-				exprNode->regType = FLOAT_REG;
-				if(leftOp->regType == INT_REG){
-					castFindex = get_float_reg();
-					rs1 = float_reg[castFindex];
-					write1("fcvt.s.w %s, %s\n", rs1, int_reg[lindex]);
-					rs2 = float_reg[rindex];
-					rd = rs2;
-				}else if(rightOp->regType == INT_REG){
-					rs1 = float_reg[lindex];
-					castFindex = get_float_reg();
-					rs2 = float_reg[castFindex];
-					write1("fcvt.s.w %s, %s\n", rs2, int_reg[rindex]);
-					rd = rs1;
-				}else{
-					rs1 = float_reg[lindex];
-					rs2 = float_reg[rindex];
-					rd = rs1;
-				}
-				//hw6
-				/*if(leftOp->dataType == INT_TYPE)
-				{
-					leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
-				}
-				if(rightOp->dataType == INT_TYPE)
-				{
-					rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
-				}*/
-
-				switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp)
-				{
-					case BINARY_OP_ADD:
-						write1("fadd.s %s, %s, %s\n", rd, rs1, rs2);
-						break;
-					case BINARY_OP_SUB:
-						write1("fsub.s %s, %s, %s\n", rd, rs1, rs2);
-						break;
-					case BINARY_OP_MUL:
-						write1("fmul.s %s, %s, %s\n", rd, rs1, rs2);
-						break;
-					case BINARY_OP_DIV:
-						write1("fdiv.s %s, %s, %s\n", rd, rs1, rs2);
-						break;
-					
-					default:
-						printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
-						break;
-				}
-
-				freeRegister(FLOAT_REG, rightOp->registerIndex);
+		gen_exprRelatedNode(leftOp);
+		gen_exprRelatedNode(rightOp);
+		int lindex = leftOp->registerIndex;
+		int rindex = rightOp->registerIndex;
+		int castFindex = -1;
+		if(leftOp->regType == FLOAT_REG || rightOp->regType == FLOAT_REG)
+		{
+			char *rs1, *rs2, *rd;
+			exprNode->regType = FLOAT_REG;
+			if(leftOp->regType == INT_REG){
+				castFindex = get_float_reg();
+				rs1 = float_reg[castFindex];
+				write1("fcvt.s.w %s, %s\n", rs1, int_reg[lindex]);
+				rs2 = float_reg[rindex];
+				exprNode->registerIndex = rindex;
+				rd = rs2;
+			}else if(rightOp->regType == INT_REG){
+				rs1 = float_reg[lindex];
+				castFindex = get_float_reg();
+				rs2 = float_reg[castFindex];
+				write1("fcvt.s.w %s, %s\n", rs2, int_reg[rindex]);
+				exprNode->registerIndex = lindex;
+				rd = rs1;
+			}else{
+				rs1 = float_reg[lindex];
+				rs2 = float_reg[rindex];
+				exprNode->registerIndex = lindex;
+				rd = rs1;
 			}
-			else if(exprNode->dataType == INT_TYPE)
-			{
-				exprNode->registerIndex = leftOp->registerIndex;
-				switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp)
-				{
-					case BINARY_OP_ADD:
-						if(rightOp->semantic_value.EXPRSemanticValue.isConstEval){
-							//code gen addi...
-						}
-						else{
-							codeGen3RegInstruction(FLOAT_REG, "add", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						}
-						break;
-					case BINARY_OP_SUB:
-						codeGen3RegInstruction(INT_REG, "sub", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						break;
-					case BINARY_OP_MUL:
-						codeGen3RegInstruction(INT_REG, "mul", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						break;
-					case BINARY_OP_DIV:
-						codeGen3RegInstruction(INT_REG, "div", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						break;
-					case BINARY_OP_EQ:
-						codeGen3RegInstruction(INT_REG, "slt", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						codeGen2RegInstruction(INT_REG, "neg", exprNode->registerIndex, exprNode->registerIndex);
-						codeGen3RegInstruction(INT_REG, "slt", leftOp->registerIndex, rightOp->registerIndex, leftOp->registerIndex);
-						codeGen2RegInstruction(INT_REG, "neg", leftOp->registerIndex, leftOp->registerIndex);
-						codeGenLogicalInstruction(INT_REG, "and", exprNode->registerIndex, exprNode->registerIndex, leftOp->registerIndex);
-						break;
-					case BINARY_OP_GE:
-						codeGen3RegInstruction(INT_REG, "slt", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						codeGen2RegInstruction(INT_REG, "neg", exprNode->registerIndex, exprNode->registerIndex);
-						break;
-					/*不會這個 
-					case BINARY_OP_LE:
-						codeGen2RegInstruction(INT_REG, "cmp", leftOp->registerIndex, rightOp->registerIndex);
-						codeGenSetReg_cond(INT_REG, "cset",exprNode->registerIndex, "le");
-						break;*/
-					case BINARY_OP_NE:
-						codeGen3RegInstruction(INT_REG, "slt", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						codeGen2RegInstruction(INT_REG, "neg", exprNode->registerIndex, exprNode->registerIndex);
-						codeGen3RegInstruction(INT_REG, "slt", leftOp->registerIndex, rightOp->registerIndex, leftOp->registerIndex);
-						codeGen2RegInstruction(INT_REG, "neg", leftOp->registerIndex, leftOp->registerIndex);
-						codeGenLogicalInstruction(INT_REG, "and", exprNode->registerIndex, exprNode->registerIndex, leftOp->registerIndex);
-						codeGen2RegInstruction(INT_REG, "neg", exprNode->registerIndex, exprNode->registerIndex);
-						break;
-					/*跟這個 
-					case BINARY_OP_GT:
-						codeGen2RegInstruction(INT_REG, "cmp", leftOp->registerIndex, rightOp->registerIndex);
-						codeGenSetReg_cond(INT_REG, "cset",exprNode->registerIndex, "gt");
-						break;*/ 
-					case BINARY_OP_LT:
-						codeGen2RegInstruction(INT_REG, "lt", leftOp->registerIndex, rightOp->registerIndex);
-						break;
-					case BINARY_OP_AND:
-						codeGenLogicalInstruction(INT_REG, "and", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						break;
-					case BINARY_OP_OR:
-						codeGenLogicalInstruction(INT_REG, "or", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						break;
-					default:
-						printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
-						break;
-				}
 
-				freeRegister(INT_REG, rightOp->registerIndex);
+			switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp)
+			{
+				case BINARY_OP_ADD:
+					write1("fadd.s %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				case BINARY_OP_SUB:
+					write1("fsub.s %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				case BINARY_OP_MUL:
+					write1("fmul.s %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				case BINARY_OP_DIV:
+					write1("fdiv.s %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				default:
+					printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
+					break;
 			}
+			if(castFindex){
+				free_float_reg(castFindex);
+			}
+			if(leftOp->regType == INT_REG){
+				free_int_reg(lindex);
+			}else if(rightOp->regType == INT_REG){
+				free_int_reg(rindex);
+			}else{
+				free_float_reg(rindex);
+			}
+		}else{
+			char *rs1 = int_reg[lindex], *rs2 = int_reg[rindex], *rd = int_reg[lindex];
+			exprNode->regType = INT_REG;
+			exprNode->registerIndex = lindex;
+			switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp)
+			{
+				case BINARY_OP_ADD:
+					write1("add %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				case BINARY_OP_SUB:
+					write1("sub %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				case BINARY_OP_MUL:
+					write1("mul %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				case BINARY_OP_DIV:
+					write1("div %s, %s, %s\n", rd, rs1, rs2);
+					break;
+				default:
+					printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
+					break;
+			}
+			free_int_reg(rindex);
 		}
 	}//endif BINARY_OPERATION
 	else if(exprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION)
 	{
-		int tmpZero = 0;
+		switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp){
+			case UNARY_OP_LOGICAL_NEGATION:
+				gen_boolExprNode(exprNode);
+				return;
+			default:
+		}
 		AST_NODE* operand = exprNode->child;
 		gen_exprRelatedNode(operand);
-		if(operand->dataType == FLOAT_TYPE)
+		char* rd;
+		if(operand->regType == FLOAT_REG)
 		{
+			exprNode->regType = FLOAT_REG;
+			rd = float_reg[operand->registerIndex];
 			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp)
 			{
 				case UNARY_OP_POSITIVE:
@@ -542,20 +419,17 @@ int gen_exprRelatedNode(AST_NODE* exprNode)
 					break;
 				case UNARY_OP_NEGATIVE:
 					exprNode->registerIndex = operand->registerIndex;
-					codeGen2RegInstruction(FLOAT_REG, "fneg.s", exprNode->registerIndex, exprNode->registerIndex);
-					break;
-				case UNARY_OP_LOGICAL_NEGATION:
-					exprNode->registerIndex = getRegister(INT_REG);
-					//codeGenGetBoolOfFloat(exprNode->registerIndex, operand->registerIndex);
-					freeRegister(FLOAT_REG, operand->registerIndex);
+					write1("fneg.s %s, %s\n", rd, rd);
 					break;
 				default:
 					printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
 					break;
 			}
 		}
-		else if(operand->dataType == INT_TYPE)
+		else if(operand->regType == INT_REG)
 		{
+			exprNode->regType = INT_REG;
+			rd = int_reg[operand->registerIndex];
 			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp)
 			{
 				case UNARY_OP_POSITIVE:
@@ -563,14 +437,7 @@ int gen_exprRelatedNode(AST_NODE* exprNode)
 					break;
 				case UNARY_OP_NEGATIVE:
 					exprNode->registerIndex = operand->registerIndex;
-					codeGen2RegInstruction(INT_REG, "neg", exprNode->registerIndex, exprNode->registerIndex);
-					break;
-					/*hw6
-				case UNARY_OP_LOGICAL_NEGATION:
-					exprNode->registerIndex = operand->registerIndex;
-					codeGenCmp0Instruction(INT_REG,"cmp",exprNode->registerIndex,0);
-					codeGenSetReg(INT_REG, "mov",exprNode->registerIndex, 0);
-					codeGenSetReg(INT_REG, "moveq",exprNode->registerIndex, 1);*/
+					write1("neg %s, %s\n", rd, rd);
 					break;
 				default:
 					printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
@@ -738,6 +605,90 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 
 void gen_boolShortCircuitNode(AST_NODE* boolExprNode){
 	//hw6
+	/*int labelNumber = getLabelNumber();
+			char *leftOpRegName, *rightOpRegName;
+
+			if(leftOp->dataType == FLOAT_TYPE || rightOp->dataType == FLOAT_TYPE) {
+				char *exprRegName;
+				exprNode->registerIndex = getRegister(INT_REG);
+				codeGenPrepareRegister(INT_REG, exprNode->registerIndex, 0, 0, &exprRegName);
+				
+				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
+					gen_exprRelatedNode(leftOp);
+					if(leftOp->dataType == INT_TYPE)
+						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
+					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);
+					write1("fcmp %s, #0.0\n", leftOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
+					codeGenExprRelatedNode(rightOp);
+					if(rightOp->dataType == INT_TYPE)
+						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
+					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);
+					write1("fcmp %s, #0.0\n", rightOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 1);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 0);
+					write1("_booleanExit%d:\n", labelNumber);
+				} else {
+					codeGenExprRelatedNode(leftOp);
+					if(leftOp->dataType == INT_TYPE)
+						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
+					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);// need think for isAddr
+					write1("fcmp %s, #0.0\n", leftOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
+					codeGenExprRelatedNode(rightOp);
+					if(rightOp->dataType == INT_TYPE)
+						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
+					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);// need think for isAddr
+					write1("fcmp %s, #0.0\n", rightOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 0);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", exprRegName, 1);
+					write1("_booleanExit%d:\n", labelNumber);
+				}
+				//freeRegister(FLOAT_REG, leftOp->registerIndex);
+				//freeRegister(FLOAT_REG, rightOp->registerIndex);
+			} else if (exprNode->dataType == INT_TYPE) {
+				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
+					codeGenExprRelatedNode(leftOp);
+					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
+					write1("cmp %s, #0\n", leftOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
+					codeGenExprRelatedNode(rightOp);
+					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
+					write1("cmp %s, #0\n", rightOpRegName);
+					write1("beq _booleanFalse%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 1);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 0);
+					write1("_booleanExit%d:\n", labelNumber);
+				} else {
+					codeGenExprRelatedNode(leftOp);
+					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
+					write1("cmp %s, #0\n", leftOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
+					codeGenExprRelatedNode(rightOp);
+					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
+					write1("cmp %s, #0\n", rightOpRegName);
+					write1("bne _booleanTrue%d\n", labelNumber);
+					write1("_booleanFalse%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 0);
+					write1("b _booleanExit%d\n", labelNumber);
+					write1("_booleanTrue%d:\n", labelNumber);
+					write1("mov %s, #%d\n", leftOpRegName, 1);
+					write1("_booleanExit%d:\n", labelNumber);
+				}
+				exprNode->registerIndex = leftOp->registerIndex;
+				freeRegister(INT_REG, rightOp->registerIndex);
+			}*/
 			/*case BINARY_OP_AND:
 				shortCircuitNumber = (labelNumber++);
 				if(bothInt){
