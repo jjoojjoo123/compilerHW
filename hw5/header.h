@@ -147,6 +147,12 @@ typedef struct CON_Type{
 		const_u;
 } CON_Type;
 
+typedef enum RegisterType
+{
+    NONE_REG,
+    INT_REG,
+    FLOAT_REG
+} RegisterType;
 
 struct AST_NODE {
 	struct AST_NODE *child;
@@ -157,6 +163,7 @@ struct AST_NODE {
     DATA_TYPE dataType;
 	int linenumber;
 	int registerIndex;
+    RegisterType regType;
 	union {
         IdentifierSemanticValue identifierSemanticValue;
         STMTSemanticValue stmtSemanticValue;

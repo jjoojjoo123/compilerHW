@@ -295,10 +295,23 @@ void gen_blockNode(AST_NODE* blockNode)
 	}
 }
 
-void gen_exprNode(AST_NODE* exprNode)
+int gen_exprRelatedNode(AST_NODE* exprNode)
 {
 	if(exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION)
 	{
+		switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp){
+			case BINARY_OP_EQ:
+			case BINARY_OP_GE:
+			case BINARY_OP_LE:
+			case BINARY_OP_NE:
+			case BINARY_OP_GT:
+			case BINARY_OP_LT:
+			case BINARY_OP_AND:
+			case BINARY_OP_OR:
+				gen_boolExprNode(exprNode);
+				return;
+			default:
+		}
 		AST_NODE* leftOp = exprNode->child;
 		AST_NODE* rightOp = leftOp->rightSibling;
 		if (exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_OR || exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_AND) {
@@ -390,8 +403,30 @@ void gen_exprNode(AST_NODE* exprNode)
 		} else {
 			gen_exprRelatedNode(leftOp);
 			gen_exprRelatedNode(rightOp);
-			if(leftOp->dataType == FLOAT_TYPE || rightOp->dataType == FLOAT_TYPE)
+			int lindex = leftOp->registerIndex;
+			int rindex = rightOp->registerIndex;
+			int castFindex = -1, castIindex = -1;
+			if(leftOp->regType == FLOAT_REG || rightOp->regType == FLOAT_REG)
 			{
+				char *rs1, *rs2, *rd;
+				exprNode->regType = FLOAT_REG;
+				if(leftOp->regType == INT_REG){
+					castFindex = get_float_reg();
+					rs1 = float_reg[castFindex];
+					write1("fcvt.s.w %s, %s\n", rs1, int_reg[lindex]);
+					rs2 = float_reg[rindex];
+					rd = rs2;
+				}else if(rightOp->regType == INT_REG){
+					rs1 = float_reg[lindex];
+					castFindex = get_float_reg();
+					rs2 = float_reg[castFindex];
+					write1("fcvt.s.w %s, %s\n", rs2, int_reg[rindex]);
+					rd = rs1;
+				}else{
+					rs1 = float_reg[lindex];
+					rs2 = float_reg[rindex];
+					rd = rs1;
+				}
 				//hw6
 				/*if(leftOp->dataType == INT_TYPE)
 				{
@@ -405,63 +440,18 @@ void gen_exprNode(AST_NODE* exprNode)
 				switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp)
 				{
 					case BINARY_OP_ADD:
-						exprNode->registerIndex = leftOp->registerIndex;
-						codeGen3RegInstruction(FLOAT_REG, "fadd.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
+						write1("fadd.s %s, %s, %s\n", rd, rs1, rs2);
 						break;
 					case BINARY_OP_SUB:
-						exprNode->registerIndex = leftOp->registerIndex;
-						codeGen3RegInstruction(FLOAT_REG, "fsub.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
+						write1("fsub.s %s, %s, %s\n", rd, rs1, rs2);
 						break;
 					case BINARY_OP_MUL:
-						exprNode->registerIndex = leftOp->registerIndex;
-						codeGen3RegInstruction(FLOAT_REG, "fmul.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
+						write1("fmul.s %s, %s, %s\n", rd, rs1, rs2);
 						break;
 					case BINARY_OP_DIV:
-						exprNode->registerIndex = leftOp->registerIndex;
-						codeGen3RegInstruction(FLOAT_REG, "fdiv.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
+						write1("fdiv.s %s, %s, %s\n", rd, rs1, rs2);
 						break;
-					case BINARY_OP_EQ:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGen3RegInstruction(FLOAT_REG, "feq.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_GE:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGen3RegInstruction(FLOAT_REG, "fle.s", exprNode->registerIndex, rightOp->registerIndex, leftOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_LE:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGen3RegInstruction(FLOAT_REG, "fle.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_NE:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGen3RegInstruction(FLOAT_REG, "flt.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						codeGen3RegInstruction(FLOAT_REG, "flt.s", leftOp->registerIndex, rightOp->registerIndex, leftOp->registerIndex);
-						codeGenLogicalInstruction(FLOAT_REG, "or", exprNode->registerIndex, exprNode->registerIndex, leftOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_GT:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGen3RegInstruction(FLOAT_REG, "flt.s", exprNode->registerIndex, rightOp->registerIndex, leftOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_LT:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGen3RegInstruction(FLOAT_REG, "flt.s", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_AND:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGenLogicalInstruction(FLOAT_REG, "and", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
-					case BINARY_OP_OR:
-						exprNode->registerIndex = getRegister(INT_REG);
-						codeGenLogicalInstruction(FLOAT_REG, "or", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-						freeRegister(FLOAT_REG, leftOp->registerIndex);
-						break;
+					
 					default:
 						printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
 						break;
@@ -588,6 +578,181 @@ void gen_exprNode(AST_NODE* exprNode)
 			}
 		}
 	}
+}
+
+void gen_boolExprNode(AST_NODE* boolExprNode){
+	boolExprNode->regType = INT_REG;
+	char* rd, rs1, rs2;
+	if(exprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION){
+		int castIindex = -1;
+		AST_NODE* operand = boolExprNode->child;
+		gen_exprRelatedNode(operand);
+		if(operand->regType == INT_REG){
+			rd = rs1 = int_reg[operand->registerIndex];
+			boolExprNode->registerIndex = operand->registerIndex;
+			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp){
+				case UNARY_OP_LOGICAL_NEGATION:
+					write1("snez %s, %s", rd, rs1);
+					break;
+			}
+		}else{
+			boolExprNode->registerIndex = get_int_reg();
+			rd = int_reg[boolExprNode->registerIndex];
+			rs1 = float_reg[operand->registerIndex];
+			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp){
+				case UNARY_OP_LOGICAL_NEGATION:
+					castIindex = get_int_reg();
+					rs2 = int_reg[castIindex];
+					write1("fclass.s %s, %s\n", rs1, rd);
+					write1("slti %s, %s, 3\n", rs2, rd);
+					write1("slti %s, %s, 5\n", rd, rd);
+					write1("xor %s, %s, %s\n", rd, rd, rs2);
+					break;
+			}
+		}
+		if(castIindex){
+			free_int_reg(castIindex);
+		}
+		if(operand->regType == FLOAT_REG){
+			free_float_reg(operand->registerIndex);
+		}
+	}else{
+		if(exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_AND || exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_OR){
+			gen_boolShortCircuitNode(exprNode);
+			return;
+		}
+		int castFindex = -1, castIindex = -1;
+		AST_NODE* leftOp = exprNode->child;
+		AST_NODE* rightOp = leftOp->rightSibling;
+		gen_exprRelatedNode(leftOp);
+		gen_exprRelatedNode(rightOp);
+		int lindex = leftOp->registerIndex;
+		int rindex = rightOp->registerIndex;
+		char* rd, rs1, rs2;
+		int bothInt = 0;
+		if(leftOp->regType == rightOp->regType){
+			if(leftOp->regType == INT_REG){
+				boolExprNode->registerIndex = lindex;
+				rd = rs1 = int_reg[lindex];
+				rs2 = int_reg[rindex];
+				bothInt = 1;
+			}else{
+				boolExprNode->registerIndex = get_int_reg();
+				rd = int_reg[boolExprNode->registerIndex];
+				rs1 = float_reg[lindex];
+				rs2 = float_reg[rindex];
+			}
+		}else{
+			castFindex = get_float_reg();
+			if(leftOp->regType == INT_REG){
+				boolExprNode->registerIndex = lindex;
+				rs1 = float_reg[castFindex];
+				write1("fcvt.s.w %s, %s\n", rs1, int_reg[lindex]);
+				rs2 = float_reg[rindex];
+				rd = int_reg[lindex];
+			}else{
+				boolExprNode->registerIndex = rindex;
+				rs1 = float_reg[lindex];
+				rs2 = float_reg[castFindex];
+				write1("fcvt.s.w %s, %s\n", rs2, int_reg[rindex]);
+				rd = int_reg[rindex];
+			}
+		}
+		switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp){
+			case BINARY_OP_EQ:
+				if(bothInt){
+					write1("xor %s, %s, %s\n", rd, rs1, rs2);
+					write1("seqz %s, %s\n", rd, rd);
+				}else{
+					write1("feq.s %s, %s, %s\n", rd, rs1, rs2);
+				}
+				break;
+			case BINARY_OP_GE:
+				if(bothInt){
+					castIindex = get_int_reg();
+					write1("slt %s, %s, %s\n", int_reg[castIindex], rs2, rs1);
+					write1("xor %s, %s, %s\n", rd, rs1, rs2);
+					write1("seqz %s, %s\n", rd, rd);
+					write1("or %s, %s, %s\n", rd, rd, int_reg[castIindex]);
+				}else{
+					write1("fle.s %s, %s, %s\n", rd, rs2, rs1);
+				}
+				break;
+			case BINARY_OP_LE:
+				if(bothInt){
+					castIindex = get_int_reg();
+					write1("slt %s, %s, %s\n", int_reg[castIindex], rs1, rs2);
+					write1("xor %s, %s, %s\n", rd, rs1, rs2);
+					write1("seqz %s, %s\n", rd, rd);
+					write1("or %s, %s, %s\n", rd, rd, int_reg[castIindex]);
+				}else{
+					write1("fle.s %s, %s, %s\n", rd, rs2, rs1);
+				}
+				break;
+			case BINARY_OP_NE:
+				if(bothInt){
+					write1("xor %s, %s, %s\n", rd, rs1, rs2);
+					write1("snez %s, %s\n", rd, rd);
+				}else{
+					write1("feq.s %s, %s, %s\n", rd, rs1, rs2);
+					write1("xor %s, %s, 1\n", rd, rd);
+				}
+				break;
+			case BINARY_OP_GT:
+				if(bothInt){
+					write1("slt %s, %s, %s\n", rd, rs2, rs1);
+				}else{
+					write1("flt.s %s, %s, %s\n", rd, rs2, rs1);
+				}
+				break;
+			case BINARY_OP_LT:
+				if(bothInt){
+					write1("slt %s, %s, %s\n", rd, rs1, rs2);
+				}else{
+					write1("flt.s %s, %s, %s\n", rd, rs1, rs2);
+				}
+				break;
+		}
+		if(castIindex){
+			free_int_reg(castIindex);
+		}
+		if(castFindex){
+			free_float_reg(castFindex);
+		}
+		if(leftOp->regType == rightOp->regType){
+			if(leftOp->regType == INT_REG){
+				free_int_reg(rindex);
+			}else{
+				free_float_reg(rindex);
+				free_float_reg(lindex);
+			}
+		}else{
+			if(leftOp->regType == INT_REG){
+				free_float_reg(rindex);
+			}else{
+				free_float_reg(lindex);
+			}
+		}
+	}
+}
+
+void gen_boolShortCircuitNode(AST_NODE* boolExprNode){
+	//hw6
+			/*case BINARY_OP_AND:
+				shortCircuitNumber = (labelNumber++);
+				if(bothInt){
+
+				}
+				exprNode->registerIndex = getRegister(INT_REG);
+				codeGenLogicalInstruction(FLOAT_REG, "and", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
+				freeRegister(FLOAT_REG, leftOp->registerIndex);
+				break;
+			case BINARY_OP_OR:
+				shortCircuitNumber = (labelNumber++);
+				exprNode->registerIndex = getRegister(INT_REG);
+				codeGenLogicalInstruction(FLOAT_REG, "or", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
+				freeRegister(FLOAT_REG, leftOp->registerIndex);
+				break;*/
 }
 
 void gen_functionCall(AST_NODE* functionCallNode)

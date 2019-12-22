@@ -10,7 +10,9 @@ void gen_globalVar(AST_NODE* varDeclListNode);
 void gen_functionDecl(AST_NODE *functionDeclNode);
 void gen_generalNode(AST_NODE* node);
 void gen_blockNode(AST_NODE* blockNode);
-void gen_exprNode(AST_NODE* exprNode);
+int gen_exprRelatedNode(AST_NODE* exprNode);
+void gen_boolExprNode(AST_NODE* boolExprNode);
+void gen_boolShortCircuitNode(AST_NODE* boolExprNode);
 void gen_functionCall(AST_NODE* functionCallNode);
 
 
