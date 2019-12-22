@@ -8,6 +8,9 @@ int label_number = 0;
 FILE* outputFile = NULL;
 char* g_currentFunctionName = NULL;
 
+#define write0(...) fprintf(outputfile, __VA_ARGS__)
+#define write1(...) fprintf(outputfile, "\t" __VA_ARGS__)
+
 char* a0 = "a0";
 char* fa0 = "fa0";
 
@@ -17,16 +20,49 @@ char* float_reg[] = {"fs0", "fs1", "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs
 #define N_INTREG (sizeof(int_reg) / sizeof(char*))
 #define N_FLOATREG (sizeof(float_reg) / sizeof(char*))
 
+int* int_reg_counter = NULL;
+int* float_reg_counter = NULL;
+
 int used_int_reg = 0;
 int used_float_reg = 0;
+
+int get_int_reg(){
+	int index = (used_int_reg++);
+	if(int_reg_counter[index]){
+		write1("addi sp, sp, -4\n");
+		write1("sw %s, 8(sp)\n", int_reg[index]);
+	}
+	int_reg_counter[index]++;
+	return index;
+}
+void free_int_reg(int index){
+	int_reg_counter[index]--;
+	if(int_reg_counter[index]){
+		write1("lw %s, 8(sp)\n", int_reg[index]);
+		write1("addi sp, sp, 4\n");
+	}
+}
+int get_float_reg(){
+	int index = (used_float_reg++);
+	if(float_reg_counter[index]){
+		write1("addi sp, sp, -4\n");
+		write1("sw %s, 8(sp)\n", float_reg[index]);
+	}
+	float_reg_counter[index]++;
+	return index;
+}
+void free_float_reg(int index){
+	float_reg_counter[index]--;
+	if(float_reg_counter[index]){
+		write1("lw %s, 8(sp)\n", float_reg[index]);
+		write1("addi sp, sp, 4\n");
+	}
+}
 
 #define get_int_reg() int_reg[(used_int_reg++) / N_INTREG]
 #define get_float_reg() float_reg[(used_float_reg++) / N_FLOATREG]
 
 #define BASE_FRAMESIZE (N_INTREG * 4 + N_FLOATREG * 4)
-
-#define write0(...) fprintf(outputfile, __VA_ARGS__)
-#define write1(...) fprintf(outputfile, "\t" __VA_ARGS__)
 
 void gen_program(AST_NODE* programNode, FILE* output)
 {
@@ -103,7 +139,13 @@ void gen_globalVar(AST_NODE* varDeclListNode)
 void gen_functionDecl(AST_NODE *functionDeclNode)
 {
 	AST_NODE* functionIdNode = functionDeclNode->child->rightSibling;
-	int i;
+
+	int* int_reg_counter_old = int_reg_counter;
+	int* float_reg_counter_old = float_reg_counter;
+	int_reg_counter = (int*)malloc(sizeof(int) * N_INTREG);
+	float_reg_counter = (int*)malloc(sizeof(int) * N_FLOATREG);
+	memset(int_reg_counter, 0, sizeof(int) * N_INTREG);
+	memset(float_reg_counter, 0, sizeof(int) * N_FLOATREG);
 
 	g_currentFunctionName = functionIdNode->semantic_value.identifierSemanticValue.identifierName;
 
@@ -124,10 +166,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	int reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("sw %s %d(sp)", int_reg[i], (++reg_count) * 4)
+		write1("sw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8)
 	}
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("sw %s %d(sp)", float_reg[i], (++reg_count) * 4)
+		write1("sw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8)
 	}
 
 	AST_NODE* blockNode = functionIdNode->rightSibling->rightSibling;
@@ -143,10 +185,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("lw %s %d(sp)", int_reg[i], (++reg_count) * 4)
+		write1("lw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8)
 	}
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("lw %s %d(sp)", float_reg[i], (++reg_count) * 4)
+		write1("lw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8)
 	}
 
 	//printRestoreRegister(outputFile);
@@ -176,6 +218,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 								frameSize+8);
 	}
 	*/
+	free(int_reg_counter);
+	free(float_reg_counter);
+	int_reg_counter = int_reg_counter_old;
+	float_reg_counter = float_reg_counter_old;
 	return;
 }
 
