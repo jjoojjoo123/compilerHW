@@ -330,10 +330,44 @@ void gen_stmtNode(AST_NODE* stmtNode){
 	}
 }
 
-void gen_while(AST_NODE* whileNode){}
+void gen_test(AST_NODE* exprNode){
+	gen_exprRelatedNode(exprNode);
+	char* rd, rs1;
+	if(exprNode->regType == FLOAT_REG){
+		int newIndex = get_int_reg();
+		rd = int_reg[newIndex];
+		rs1 = float_reg[exprNode->registerIndex];
+		write1("fabs.s %s, %s\n", rs1, rs1);
+		write1("fclass.s %s, %s\n", rd, rs1);
+		write1("subi %s, %s, 4\n", rd, rd);
+		write1("snez %s, %s\n", rd, rd);
+		free_float_reg(exprNode->registerIndex);
+		exprNode->regType = INT_REG;
+		exprNode->registerIndex = newIndex;
+	}else{
+		rd = int_reg[exprNode->registerIndex];
+		exprNode->regType = INT_REG;
+		write1("snez %s, %s\n", rd, rd);
+	}
+}
+
+void gen_while(AST_NODE* whileNode){
+	int label = (labelNumber++);
+	AST_NODE* testNode = ifNode->child;
+	AST_NODE* stmtNode = testNode->rightSibling;
+	write0("_Test%d\n", label);
+	gen_test(testNode);
+	write1("beqz %s, _LExit%d\n", int_reg[testNode->registerIndex], label);
+	free_int_reg(testNode->registerIndex);
+	gen_stmtNode(stmtNode);
+	write1("j _Test%d\n", label);
+	write0("_LExit%d\n", label);
+}
+
 void gen_for(AST_NODE* forNode){
 	//hw6
 }
+
 void gen_assign(AST_NODE* assignNode){
 	AST_NODE* idNode = assignNode->child;
 	AST_NODE* exprNode = idNode->rightSibling;
@@ -350,7 +384,29 @@ void gen_assign(AST_NODE* assignNode){
 		//hw6
 	}
 }
-void gen_if(AST_NODE* ifNode){}
+
+void gen_if(AST_NODE* ifNode){
+	int label = (labelNumber++);
+	AST_NODE* testNode = ifNode->child;
+	AST_NODE* stmtNode = testNode->rightSibling;
+	AST_NODE* elseNode = stmtNode->rightSibling;
+	gen_test(testNode);
+	if(elseNode->nodeType == NUL_NODE){
+		write1("bnez %s, Lexit%d\n", int_reg[testNode->registerIndex], label);
+	}else{
+		write1("beqz %s, Lelse%d\n", int_reg[testNode->registerIndex], label);
+	}
+	free_int_reg(testNode->registerIndex);
+	gen_stmtNode(stmtNode);
+	if(elseNode->nodeType == NUL_NODE){
+		write0("Lexit%d:\n", label);
+	}else{
+		write0("Lelse%d:\n", label);
+		gen_stmtNode(elseNode);
+		write0("Lexit%d:\n", label);
+	}
+}
+
 void gen_return(AST_NODE* returnNode){
 	AST_NODE* child = returnNode->child;
 	if(child->nodeType != NUL_NODE){
@@ -697,7 +753,6 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 	boolExprNode->regType = INT_REG;
 	char* rd, rs1, rs2;
 	if(exprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION){
-		int castIindex = -1;
 		AST_NODE* operand = boolExprNode->child;
 		gen_exprRelatedNode(operand);
 		if(operand->regType == INT_REG){
@@ -714,17 +769,12 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 			rs1 = float_reg[operand->registerIndex];
 			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp){
 				case UNARY_OP_LOGICAL_NEGATION:
-					castIindex = get_int_reg();
-					rs2 = int_reg[castIindex];
-					write1("fclass.s %s, %s\n", rs1, rd);
-					write1("slti %s, %s, 3\n", rs2, rd);
-					write1("slti %s, %s, 5\n", rd, rd);
-					write1("xor %s, %s, %s\n", rd, rd, rs2);
+					write1("fabs.s %s, %s\n", rs1, rs1);
+					write1("fclass.s %s, %s\n", rd, rs1);
+					write1("slti %s, %s, 4\n", rd, rd);
+					write1("seqz %s, %s\n", rd, rd);
 					break;
 			}
-		}
-		if(castIindex){
-			free_int_reg(castIindex);
 		}
 		if(operand->regType == FLOAT_REG){
 			free_float_reg(operand->registerIndex);

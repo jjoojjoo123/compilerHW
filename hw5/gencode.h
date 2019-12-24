@@ -12,6 +12,7 @@ void gen_globalVar(AST_NODE* varDeclListNode);
 void gen_functionDecl(AST_NODE *functionDeclNode);
 void gen_generalNode(AST_NODE* node);
 void gen_stmtNode(AST_NODE* stmtNode);
+void gen_test(AST_NODE* exprNode);
 void gen_while(AST_NODE* whileNode);
 void gen_for(AST_NODE* forNode);
 void gen_assign(AST_NODE* assignNode);
