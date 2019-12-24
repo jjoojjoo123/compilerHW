@@ -319,29 +319,34 @@ void gen_idNode(AST_NODE* idNode){
 
 void gen_constNode(AST_NODE* constNode){
 	if(exprNode->dataType == INT_TYPE){
-		exprNode->regType = INT_REG;
-		exprNode->registerIndex = get_int_reg();
-		write1("li %s, %d\n", int_reg[exprNode->registerIndex], constNode->semantic_value.const1->const_u.intval);
+		gen_integer(constNode, constNode->semantic_value.const1->const_u.intval);
 	}else{
-		float f = constNode->semantic_value.const1->const_u.fval;
-		exprNode->regType = FLOAT_REG;
-		exprNode->registerIndex = get_float_reg();
-		write1("li %s, %d\n", float_reg[exprNode->registerIndex], *(int*)(&f));
+		gen_float(constNode, constNode->semantic_value.const1->const_u.fval);
 	}
+}
+
+void gen_integer(AST_NODE* node, int i){
+	node->regType = INT_REG;
+	node->registerIndex = get_int_reg();
+	write1("li %s, %d\n", int_reg[node->registerIndex], i);
+}
+
+void gen_float(AST_NODE* node, float f){
+	node->regType = FLOAT_REG;
+	node->registerIndex = get_float_reg();
+	int castIindex = get_int_reg();
+	write1("li %s, %d\n", int_reg[castIindex], *(int*)(&f));
+	write1("fmv.w.x %s, %s\n", float_reg[node->registerIndex], int_reg[castIindex]);
+	free_int_reg(castIindex);
 }
 
 void gen_exprNode(AST_NODE* exprNode)
 {
 	if(exprNode->semantic_value.exprSemanticValue.isConstEval){
 		if(exprNode->dataType == INT_TYPE){
-			exprNode->regType = INT_REG;
-			exprNode->registerIndex = get_int_reg();
-			write1("li %s, %d\n", int_reg[exprNode->registerIndex], exprNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
+			gen_integer(exprNode, exprNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
 		}else{
-			float f = exprNode->semantic_value.exprSemanticValue.constEvalValue.fValue;
-			exprNode->regType = FLOAT_REG;
-			exprNode->registerIndex = get_float_reg();
-			write1("li %s, %d\n", float_reg[exprNode->registerIndex], *(int*)(&f));
+			gen_integer(exprNode, exprNode->semantic_value.exprSemanticValue.constEvalValue.fValue);
 		}
 		return;
 	}
