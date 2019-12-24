@@ -487,9 +487,9 @@ void gen_idNodeRef(AST_NODE* idNode){
 			}else{
 				castIindex = get_int_reg();
 				write1("fcvt.w.s %s, %s\n", int_reg[castIindex], float_reg[child->registerIndex]);
-				free_float_reg(child->registerIndex);
 				write1("add %s, %s, %s\n", regName, regName, int_reg[castIindex]);
 				free_int_reg(castIindex);
+				free_float_reg(child->registerIndex);
 			}
 		}
 
