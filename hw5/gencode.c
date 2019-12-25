@@ -3,7 +3,6 @@
 #include "gencode.h"
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 int label_number = 0;
 FILE* outputFile = NULL;
@@ -29,6 +28,7 @@ int used_float_reg = 0;
 
 int get_int_reg(){
 	int index = (used_int_reg++);
+	used_int_reg %= N_INTREG;
 	if(int_reg_counter[index]){
 		write1("addi sp, sp, -4\n");
 		write1("sw %s, 8(sp)\n", int_reg[index]);
@@ -45,6 +45,7 @@ void free_int_reg(int index){
 }
 int get_float_reg(){
 	int index = (used_float_reg++);
+	used_float_reg %= N_FLOATREG;
 	if(float_reg_counter[index]){
 		write1("addi sp, sp, -4\n");
 		write1("sw %s, 8(sp)\n", float_reg[index]);
@@ -60,9 +61,6 @@ void free_float_reg(int index){
 	}
 }
 
-#define get_int_reg() int_reg[(used_int_reg++) / N_INTREG]
-#define get_float_reg() float_reg[(used_float_reg++) / N_FLOATREG]
-
 #define BASE_FRAMESIZE (N_INTREG * 4 + N_FLOATREG * 4)
 
 void gen_program(AST_NODE* programNode, FILE* output)
@@ -71,7 +69,7 @@ void gen_program(AST_NODE* programNode, FILE* output)
 	if(!outputFile)
 	{
 		printf("Cannot open file.");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 
 	gen_programNode(programNode);
@@ -166,6 +164,11 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	memset(int_reg_counter, 0, sizeof(int) * N_INTREG);
 	memset(float_reg_counter, 0, sizeof(int) * N_FLOATREG);
 
+	int used_int_reg_old = used_int_reg;
+	int used_float_reg_old = used_float_reg;
+	used_int_reg = 0;
+	used_float_reg = 0;
+
 	g_currentFunctionName = functionIdNode->semantic_value.identifierSemanticValue.identifierName;
 
 	write0(".text\n");
@@ -218,6 +221,7 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	write1("jr ra\n");
 	write1(".data\n");
 	//offset is a minus number
+			//printf("%d\n", functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry);
 	write1("_frameSize_%s: .word %d\n", g_currentFunctionName, (BASE_FRAMESIZE - functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset) / 4);
 	/*int frameSize = abs(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR) + 
 		(INT_REGISTER_COUNT + INT_WORK_REGISTER_COUNT + INT_OTHER_REGISTER_COUNT + FLOAT_REGISTER_COUNT + FLOAT_WORK_REGISTER_COUNT) * 4 +
@@ -241,6 +245,8 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	free(float_reg_counter);
 	int_reg_counter = int_reg_counter_old;
 	float_reg_counter = float_reg_counter_old;
+	used_int_reg = used_int_reg_old;
+	used_float_reg = used_float_reg_old;
 	return;
 }
 
@@ -252,7 +258,8 @@ void gen_generalNode(AST_NODE* node)
 		case VARIABLE_DECL_LIST_NODE:
 			while(listNode)
 			{
-				gen_generalNode(listNode);
+				//hw6 initialize
+				//gen_generalNode(listNode);
 				listNode = listNode->rightSibling;
 			}
 			break;
@@ -476,7 +483,7 @@ void gen_idNodeRef(AST_NODE* idNode){
 		ArrayProperties properties = idNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.typeDescriptor->properties.arrayProperties;
 		int castIindex = -1;
 		write1("mv %s, x0\n", regName);
-		AST_NODE* child;
+		AST_NODE* child = idNode->child;
 		for(int i = 0;child != NULL;i++, child = child->rightSibling){
 			gen_exprRelatedNode(child);
 			if(i > 0){
@@ -495,8 +502,8 @@ void gen_idNodeRef(AST_NODE* idNode){
 		}
 
 		if(entry->nestingLevel > 0){
-			write1("add %s, %s, fp\n", tmpName, tmpName);
-			write1("addi %s, %s, %d\n", tmpName, tmpName, entry->offset);
+			write1("add %s, %s, fp\n", regName, regName);
+			write1("addi %s, %s, %d\n", regName, regName, entry->offset);
 		}else{
 			castIindex = get_int_reg();
 			write1("la %s, _g_%s\n", int_reg[castIindex], name);
@@ -576,7 +583,7 @@ void gen_float(AST_NODE* node, float f){
 void gen_stringConst(AST_NODE* node, char* sc){
 	node->regType = PTR_REG;
 	node->registerIndex = get_int_reg();
-	int label = label_number++;
+	int label = (label_number++);
 	write0(".CSTR%d:\n", label);
 
 	int length = strlen(sc);
@@ -613,6 +620,8 @@ void gen_exprNode(AST_NODE* exprNode)
 			case BINARY_OP_OR:
 				gen_boolExprNode(exprNode);
 				return;
+			default:
+				;
 		}
 		AST_NODE* leftOp = exprNode->child;
 		AST_NODE* rightOp = leftOp->rightSibling;
@@ -705,6 +714,8 @@ void gen_exprNode(AST_NODE* exprNode)
 			case UNARY_OP_LOGICAL_NEGATION:
 				gen_boolExprNode(exprNode);
 				return;
+			default:
+				;
 		}
 		AST_NODE* operand = exprNode->child;
 		gen_exprRelatedNode(operand);
@@ -766,7 +777,7 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 			boolExprNode->registerIndex = get_int_reg();
 			rd = int_reg[boolExprNode->registerIndex];
 			rs1 = float_reg[operand->registerIndex];
-			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp){
+			switch(boolExprNode->semantic_value.exprSemanticValue.op.unaryOp){
 				case UNARY_OP_LOGICAL_NEGATION:
 					write1("fabs.s %s, %s\n", rs1, rs1);
 					write1("fclass.s %s, %s\n", rd, rs1);
@@ -779,12 +790,12 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 			free_float_reg(operand->registerIndex);
 		}
 	}else{
-		if(exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_AND || exprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_OR){
-			gen_boolShortCircuitNode(exprNode);
+		if(boolExprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_AND || boolExprNode->semantic_value.exprSemanticValue.op.binaryOp == BINARY_OP_OR){
+			gen_boolShortCircuitNode(boolExprNode);
 			return;
 		}
 		int castFindex = -1, castIindex = -1;
-		AST_NODE* leftOp = exprNode->child;
+		AST_NODE* leftOp = boolExprNode->child;
 		AST_NODE* rightOp = leftOp->rightSibling;
 		gen_exprRelatedNode(leftOp);
 		gen_exprRelatedNode(rightOp);
@@ -820,7 +831,7 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 				rd = int_reg[rindex];
 			}
 		}
-		switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp){
+		switch(boolExprNode->semantic_value.exprSemanticValue.op.binaryOp){
 			case BINARY_OP_EQ:
 				if(bothInt){
 					write1("xor %s, %s, %s\n", rd, rs1, rs2);
@@ -1082,6 +1093,8 @@ void gen_functionCallWithoutCatchReturn(AST_NODE* functionCallNode){
 							write1("sd %s, (%d)sp\n", int_reg[index], 8 + paramOffset);
 							free_int_reg(index);
 							break;
+						default:
+							;
 					}
 					paramOffset += 8;
 					traverseParameter = traverseParameter->rightSibling;
@@ -1099,8 +1112,8 @@ void gen_functionCallWithoutCatchReturn(AST_NODE* functionCallNode){
 
 void gen_functionCall(AST_NODE* functionCallNode)
 {
-	gen_functionCallWithoutCatchReturn(functionCallNode);
 	AST_NODE* functionIdNode = functionCallNode->child;
+	gen_functionCallWithoutCatchReturn(functionCallNode);
 	if (functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry) {
 		if(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.functionSignature->returnType == INT_TYPE)
 		{
