@@ -113,7 +113,9 @@ int getArraySize(TypeDescriptor* idTypeDescriptor){
 	}
 	for(int i = 0; i < properties.dimension; i++) {
 		array_size *= properties.sizeInEachDimension[i];
+		//printf("%d\n", properties.sizeInEachDimension[i]);
 	}
+	//printf("%d\n", array_size);
 	return array_size;
 }
 
@@ -195,13 +197,17 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	//resetRegisterTable(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR);
 
-	int reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("sw %s %d(sp)\n", int_reg[i], (reg_count++) * 4 + 8);
+		write1("sw %s, %d(sp)\n", int_reg[i], i * 4 + 8);
 	}
+	int castIindex = get_int_reg();
+	char* regName = int_reg[castIindex];
+	write1("addi %s, sp, %d\n", regName, N_INTREG * 4 + 8);
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("sw %s %d(sp)\n", float_reg[i], (reg_count++) * 4 + 8);
+		write1("fmv.x.w %s, %s\n", regName, float_reg[i]);
+		write1("addi %s, %s, 4\n", regName, regName);
 	}
+	free_int_reg(castIindex);
 
 	AST_NODE* blockNode = functionIdNode->rightSibling->rightSibling;
 	AST_NODE *listNode = blockNode->child;
@@ -214,17 +220,21 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	//epilogue
 	write0("_end_%s:\n", g_currentFunctionName);
 
-	reg_count = 0;
-	for(int i = 0;i < N_INTREG;i++){
-		write1("lw %s %d(sp)\n", int_reg[i], (reg_count++) * 4 + 8);
-	}
+	castIindex = get_int_reg();
+	regName = int_reg[castIindex];
+	write1("addi %s, sp, %d\n", regName, N_INTREG * 4 + 8);
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("lw %s %d(sp)\n", float_reg[i], (reg_count++) * 4 + 8);
+		write1("fmv.w.x %s, %s\n", float_reg[i], regName);
+		write1("addi %s, %s, 4\n", regName, regName);
+	}
+	free_int_reg(castIindex);
+	for(int i = 0;i < N_INTREG;i++){
+		write1("lw %s, %d(sp)\n", int_reg[i], i * 4 + 8);
 	}
 
 	//printRestoreRegister(outputFile);
 	write1("ld ra, 8(fp)\n");
-	write1("mov sp, fp\n");
+	write1("mv sp, fp\n");
 	write1("add sp, sp, 8\n");
 	write1("ld fp, 0(fp)\n");
 	write1("jr ra\n");
