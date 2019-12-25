@@ -757,7 +757,7 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 		if(operand->regType == INT_REG){
 			rd = rs1 = int_reg[operand->registerIndex];
 			boolExprNode->registerIndex = operand->registerIndex;
-			switch(exprNode->semantic_value.exprSemanticValue.op.unaryOp){
+			switch(boolExprNode->semantic_value.exprSemanticValue.op.unaryOp){
 				case UNARY_OP_LOGICAL_NEGATION:
 					write1("snez %s, %s", rd, rs1);
 					break;
