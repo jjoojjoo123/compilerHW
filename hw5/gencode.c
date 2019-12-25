@@ -1,15 +1,16 @@
 #include "header.h"
-#include "symboltable.h"
+#include "symbolTable.h"
 #include "gencode.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 int label_number = 0;
 FILE* outputFile = NULL;
 char* g_currentFunctionName = NULL;
 
-#define write0(...) fprintf(outputfile, __VA_ARGS__)
-#define write1(...) fprintf(outputfile, "\t" __VA_ARGS__)
+#define write0(...) fprintf(outputFile, __VA_ARGS__)
+#define write1(...) fprintf(outputFile, "\t" __VA_ARGS__)
 
 char* a0 = "a0";
 char* fa0 = "fa0";
@@ -184,10 +185,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	int reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("sw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8)
+		write1("sw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8);
 	}
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("sw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8)
+		write1("sw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8);
 	}
 
 	AST_NODE* blockNode = functionIdNode->rightSibling->rightSibling;
@@ -203,10 +204,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("lw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8)
+		write1("lw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8);
 	}
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("lw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8)
+		write1("lw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8);
 	}
 
 	//printRestoreRegister(outputFile);
@@ -352,8 +353,8 @@ void gen_test(AST_NODE* exprNode){
 }
 
 void gen_while(AST_NODE* whileNode){
-	int label = (labelNumber++);
-	AST_NODE* testNode = ifNode->child;
+	int label = (label_number++);
+	AST_NODE* testNode = whileNode->child;
 	AST_NODE* stmtNode = testNode->rightSibling;
 	write0("_Test%d\n", label);
 	gen_test(testNode);
@@ -386,7 +387,7 @@ void gen_assign(AST_NODE* assignNode){
 }
 
 void gen_if(AST_NODE* ifNode){
-	int label = (labelNumber++);
+	int label = (label_number++);
 	AST_NODE* testNode = ifNode->child;
 	AST_NODE* stmtNode = testNode->rightSibling;
 	AST_NODE* elseNode = stmtNode->rightSibling;
@@ -575,7 +576,7 @@ void gen_float(AST_NODE* node, float f){
 void gen_stringConst(AST_NODE* node, char* sc){
 	node->regType = PTR_REG;
 	node->registerIndex = get_int_reg();
-	int label = labelNumber++;
+	int label = label_number++;
 	write0(".CSTR%d:\n", label);
 
 	int length = strlen(sc);
@@ -612,7 +613,6 @@ void gen_exprNode(AST_NODE* exprNode)
 			case BINARY_OP_OR:
 				gen_boolExprNode(exprNode);
 				return;
-			default:
 		}
 		AST_NODE* leftOp = exprNode->child;
 		AST_NODE* rightOp = leftOp->rightSibling;
@@ -705,7 +705,6 @@ void gen_exprNode(AST_NODE* exprNode)
 			case UNARY_OP_LOGICAL_NEGATION:
 				gen_boolExprNode(exprNode);
 				return;
-			default:
 		}
 		AST_NODE* operand = exprNode->child;
 		gen_exprRelatedNode(operand);
@@ -752,7 +751,7 @@ void gen_exprNode(AST_NODE* exprNode)
 void gen_boolExprNode(AST_NODE* boolExprNode){
 	boolExprNode->regType = INT_REG;
 	char* rd, rs1, rs2;
-	if(exprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION){
+	if(boolExprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION){
 		AST_NODE* operand = boolExprNode->child;
 		gen_exprRelatedNode(operand);
 		if(operand->regType == INT_REG){
@@ -1083,7 +1082,6 @@ void gen_functionCallWithoutCatchReturn(AST_NODE* functionCallNode){
 							write1("sd %s, (%d)sp\n", int_reg[index], 8 + paramOffset);
 							free_int_reg(index);
 							break;
-						default:
 					}
 					paramOffset += 8;
 					traverseParameter = traverseParameter->rightSibling;
@@ -1102,6 +1100,7 @@ void gen_functionCallWithoutCatchReturn(AST_NODE* functionCallNode){
 void gen_functionCall(AST_NODE* functionCallNode)
 {
 	gen_functionCallWithoutCatchReturn(functionCallNode);
+	AST_NODE* functionIdNode = functionCallNode->child;
 	if (functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry) {
 		if(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.functionSignature->returnType == INT_TYPE)
 		{
