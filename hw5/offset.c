@@ -19,13 +19,13 @@ int offsetSet(AST_NODE* node, int nowOffset){
         return nowOffset;
 	}else if(node->nodeType == BLOCK_NODE){
 		nowOffset = offsetBlock(node, nowOffset);
-		AST_NODE* child = node->child;
-		while(child){
-			nowOffset = offsetSet(child, nowOffset);
-			child = child->rightSibling;
-		}
-		return nowOffset;
 	}
+	AST_NODE* child = node->child;
+	while(child){
+		nowOffset = offsetSet(child, nowOffset);
+		child = child->rightSibling;
+	}
+	return nowOffset;
 }
 
 int offsetBlock(AST_NODE* blockNode, int nowOffset){
@@ -51,6 +51,7 @@ int offsetBlock(AST_NODE* blockNode, int nowOffset){
 			entry->offset = nowOffset;
 			idNode = idNode->rightSibling;
 		}
+		declNode = declNode->rightSibling;
 	}
 	return nowOffset;
 }

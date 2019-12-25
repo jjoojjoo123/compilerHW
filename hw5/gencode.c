@@ -188,10 +188,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	int reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("sw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8);
+		write1("sw %s %d(sp)\n", int_reg[i], (reg_count++) * 4 + 8);
 	}
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("sw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8);
+		write1("sw %s %d(sp)\n", float_reg[i], (reg_count++) * 4 + 8);
 	}
 
 	AST_NODE* blockNode = functionIdNode->rightSibling->rightSibling;
@@ -207,10 +207,10 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 
 	reg_count = 0;
 	for(int i = 0;i < N_INTREG;i++){
-		write1("lw %s %d(sp)", int_reg[i], (reg_count++) * 4 + 8);
+		write1("lw %s %d(sp)\n", int_reg[i], (reg_count++) * 4 + 8);
 	}
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("lw %s %d(sp)", float_reg[i], (reg_count++) * 4 + 8);
+		write1("lw %s %d(sp)\n", float_reg[i], (reg_count++) * 4 + 8);
 	}
 
 	//printRestoreRegister(outputFile);
