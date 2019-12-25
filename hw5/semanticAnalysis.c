@@ -1315,8 +1315,7 @@ void processDeclDimList(AST_NODE* idNode, TypeDescriptor* typeDescriptor, int ig
         }
         else
         {
-            typeDescriptor->properties.arrayProperties.sizeInEachDimension[dimension] = 
-                traverseDim->semantic_value.exprSemanticValue.constEvalValue.iValue;
+            getExprOrConstValue(traverseDim, &typeDescriptor->properties.arrayProperties.sizeInEachDimension[dimension], NULL);
         }
 
         ++dimension;
@@ -1444,5 +1443,7 @@ void declareFunction(AST_NODE* declarationNode)
         {
             removeSymbol(functionNameID->semantic_value.identifierSemanticValue.identifierName);
         }
+    }else{
+        
     }
 }
