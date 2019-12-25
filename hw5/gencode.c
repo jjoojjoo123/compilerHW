@@ -61,6 +61,15 @@ void free_float_reg(int index){
 	}
 }
 
+void printUsedReg(){
+	for(int i = 0;i < N_INTREG;i++){
+		printf("%d ", int_reg_counter[i]);
+	}printf("/");
+	for(int i = 0;i < N_FLOATREG;i++){
+		printf("%d ", float_reg_counter[i]);
+	}printf("\n");
+}
+
 #define BASE_FRAMESIZE (N_INTREG * 4 + N_FLOATREG * 4)
 
 void gen_program(AST_NODE* programNode, FILE* output)
@@ -266,6 +275,7 @@ void gen_generalNode(AST_NODE* node)
 		case STMT_LIST_NODE:
 			while(listNode)
 			{
+				//printUsedReg();
 				gen_stmtNode(listNode);
 				listNode = listNode->rightSibling;
 			}
@@ -391,6 +401,7 @@ void gen_assign(AST_NODE* assignNode){
 	}else{
 		//hw6
 	}
+	free_int_reg(idNode->registerIndex);
 }
 
 void gen_if(AST_NODE* ifNode){
