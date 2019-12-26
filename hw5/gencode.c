@@ -90,9 +90,8 @@ void gen_programNode(AST_NODE *programNode)
 	while(declList)
 	{
 		if(declList->nodeType == VARIABLE_DECL_LIST_NODE){
-			write1(".data\n");
+			write0(".data\n");
 			gen_globalVar(declList);
-			write1(".text\n");
 		}
 		else if(declList->nodeType == DECLARATION_NODE){
 			gen_functionDecl(declList);
@@ -200,14 +199,9 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	for(int i = 0;i < N_INTREG;i++){
 		write1("sw %s, %d(sp)\n", int_reg[i], i * 4 + 8);
 	}
-	int castIindex = get_int_reg();
-	char* regName = int_reg[castIindex];
-	write1("addi %s, sp, %d\n", regName, N_INTREG * 4 + 8);
 	for(int i = 0;i < N_FLOATREG;i++){
-		write1("fmv.x.w %s, %s\n", regName, float_reg[i]);
-		write1("addi %s, %s, 4\n", regName, regName);
+		write1("fsw %s, %d(sp)\n", float_reg[i], (N_INTREG + i) * 4 + 8);
 	}
-	free_int_reg(castIindex);
 
 	AST_NODE* blockNode = functionIdNode->rightSibling->rightSibling;
 	AST_NODE *listNode = blockNode->child;
@@ -220,28 +214,23 @@ void gen_functionDecl(AST_NODE *functionDeclNode)
 	//epilogue
 	write0("_end_%s:\n", g_currentFunctionName);
 
-	castIindex = get_int_reg();
-	regName = int_reg[castIindex];
-	write1("addi %s, sp, %d\n", regName, N_INTREG * 4 + 8);
-	for(int i = 0;i < N_FLOATREG;i++){
-		write1("fmv.w.x %s, %s\n", float_reg[i], regName);
-		write1("addi %s, %s, 4\n", regName, regName);
-	}
-	free_int_reg(castIindex);
 	for(int i = 0;i < N_INTREG;i++){
 		write1("lw %s, %d(sp)\n", int_reg[i], i * 4 + 8);
+	}
+	for(int i = 0;i < N_FLOATREG;i++){
+		write1("flw %s, %d(sp)\n", float_reg[i], (N_INTREG + i) * 4 + 8);
 	}
 
 	//printRestoreRegister(outputFile);
 	write1("ld ra, 8(fp)\n");
 	write1("mv sp, fp\n");
-	write1("add sp, sp, 8\n");
+	write1("addi sp, sp, 8\n");
 	write1("ld fp, 0(fp)\n");
 	write1("jr ra\n");
 	write1(".data\n");
 	//offset is a minus number
 			//printf("%d\n", functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry);
-	write1("_frameSize_%s: .word %d\n", g_currentFunctionName, (BASE_FRAMESIZE - functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset) / 4);
+	write1("_frameSize_%s: .word %d\n", g_currentFunctionName, BASE_FRAMESIZE - functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->offset);
 	/*int frameSize = abs(functionIdNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->offsetInAR) + 
 		(INT_REGISTER_COUNT + INT_WORK_REGISTER_COUNT + INT_OTHER_REGISTER_COUNT + FLOAT_REGISTER_COUNT + FLOAT_WORK_REGISTER_COUNT) * 4 +
 		g_pseudoRegisterTable.isAllocatedVector->size * 4;
@@ -452,6 +441,7 @@ void gen_return(AST_NODE* returnNode){
 			//hw6
 		}
 	}
+	write1("j _end_%s\n", g_currentFunctionName);
 }
 
 void gen_assignOrExpr(AST_NODE* assignOrExprNode){
@@ -521,6 +511,8 @@ void gen_idNodeRef(AST_NODE* idNode){
 				free_float_reg(child->registerIndex);
 			}
 		}
+
+		write1("slli %s, %s, 2\n", regName, regName);
 
 		if(entry->nestingLevel > 0){
 			write1("add %s, %s, fp\n", regName, regName);
@@ -605,17 +597,20 @@ void gen_stringConst(AST_NODE* node, char* sc){
 	node->regType = PTR_REG;
 	node->registerIndex = get_int_reg();
 	int label = (label_number++);
-	write0(".CSTR%d:\n", label);
+	write1(".data\n");
+	write0("_CONSTANT_%d:\n", label);
 
 	int length = strlen(sc);
 	sc[length - 1] = '\0';
 	write1(".string %s\\000\"\n", sc);
 	sc[length - 1] = '\"';
 
-	write1(".align 4\n");
+	write1(".align 3\n");
+	write1(".text\n");
 
-	write1("lui %s, %%hi(.CSTR%d)\n", int_reg[node->registerIndex], label);
-	write1("addi %s, %s, %%lo(.CSTR%d)\n", int_reg[node->registerIndex], int_reg[node->registerIndex], label);
+	//write1("lui %s, %%hi(.CSTR%d)\n", int_reg[node->registerIndex], label);
+	//write1("addi %s, %s, %%lo(.CSTR%d)\n", int_reg[node->registerIndex], int_reg[node->registerIndex], label);
+	write1("la %s, _CONSTANT_%d\n", int_reg[node->registerIndex], label);
 }
 
 void gen_exprNode(AST_NODE* exprNode)
