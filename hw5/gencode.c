@@ -275,6 +275,7 @@ void gen_generalNode(AST_NODE* node)
 			while(listNode)
 			{
 				//printUsedReg();
+				//printf("%d\n", listNode->linenumber);
 				gen_stmtNode(listNode);
 				listNode = listNode->rightSibling;
 			}
@@ -349,7 +350,7 @@ void gen_stmtNode(AST_NODE* stmtNode){
 
 void gen_test(AST_NODE* exprNode){
 	gen_exprRelatedNode(exprNode);
-	char* rd, rs1;
+	char *rd, *rs1;
 	if(exprNode->regType == FLOAT_REG){
 		int newIndex = get_int_reg();
 		rd = int_reg[newIndex];
@@ -357,14 +358,14 @@ void gen_test(AST_NODE* exprNode){
 		write1("fabs.s %s, %s\n", rs1, rs1);
 		write1("fclass.s %s, %s\n", rd, rs1);
 		write1("subi %s, %s, 4\n", rd, rd);
-		write1("snez %s, %s\n", rd, rd);
+		//write1("snez %s, %s\n", rd, rd);
 		free_float_reg(exprNode->registerIndex);
 		exprNode->regType = INT_REG;
 		exprNode->registerIndex = newIndex;
 	}else{
 		rd = int_reg[exprNode->registerIndex];
 		exprNode->regType = INT_REG;
-		write1("snez %s, %s\n", rd, rd);
+		//write1("snez %s, %s\n", rd, rd);
 	}
 }
 
@@ -372,13 +373,13 @@ void gen_while(AST_NODE* whileNode){
 	int label = (label_number++);
 	AST_NODE* testNode = whileNode->child;
 	AST_NODE* stmtNode = testNode->rightSibling;
-	write0("_Test%d\n", label);
+	write0("_Test%d:\n", label);
 	gen_test(testNode);
 	write1("beqz %s, _LExit%d\n", int_reg[testNode->registerIndex], label);
 	free_int_reg(testNode->registerIndex);
 	gen_stmtNode(stmtNode);
 	write1("j _Test%d\n", label);
-	write0("_LExit%d\n", label);
+	write0("_LExit%d:\n", label);
 }
 
 void gen_for(AST_NODE* forNode){
@@ -410,7 +411,7 @@ void gen_if(AST_NODE* ifNode){
 	AST_NODE* elseNode = stmtNode->rightSibling;
 	gen_test(testNode);
 	if(elseNode->nodeType == NUL_NODE){
-		write1("bnez %s, Lexit%d\n", int_reg[testNode->registerIndex], label);
+		write1("beqz %s, Lexit%d\n", int_reg[testNode->registerIndex], label);
 	}else{
 		write1("beqz %s, Lelse%d\n", int_reg[testNode->registerIndex], label);
 	}
@@ -419,6 +420,7 @@ void gen_if(AST_NODE* ifNode){
 	if(elseNode->nodeType == NUL_NODE){
 		write0("Lexit%d:\n", label);
 	}else{
+		write1("j Lexit%d\n", label);
 		write0("Lelse%d:\n", label);
 		gen_stmtNode(elseNode);
 		write0("Lexit%d:\n", label);
@@ -619,7 +621,7 @@ void gen_exprNode(AST_NODE* exprNode)
 		if(exprNode->dataType == INT_TYPE){
 			gen_integer(exprNode, exprNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
 		}else{
-			gen_integer(exprNode, exprNode->semantic_value.exprSemanticValue.constEvalValue.fValue);
+			gen_float(exprNode, exprNode->semantic_value.exprSemanticValue.constEvalValue.fValue);
 		}
 		return;
 	}
@@ -643,8 +645,8 @@ void gen_exprNode(AST_NODE* exprNode)
 		AST_NODE* rightOp = leftOp->rightSibling;
 		gen_exprRelatedNode(leftOp);
 		gen_exprRelatedNode(rightOp);
-		int lindex = leftOp->registerIndex;
-		int rindex = rightOp->registerIndex;
+		int lIndex = leftOp->registerIndex;
+		int rIndex = rightOp->registerIndex;
 		int castFindex = -1;
 		if(leftOp->regType == FLOAT_REG || rightOp->regType == FLOAT_REG)
 		{
@@ -653,21 +655,21 @@ void gen_exprNode(AST_NODE* exprNode)
 			if(leftOp->regType == INT_REG){
 				castFindex = get_float_reg();
 				rs1 = float_reg[castFindex];
-				write1("fcvt.s.w %s, %s\n", rs1, int_reg[lindex]);
-				rs2 = float_reg[rindex];
-				exprNode->registerIndex = rindex;
+				write1("fcvt.s.w %s, %s\n", rs1, int_reg[lIndex]);
+				rs2 = float_reg[rIndex];
+				exprNode->registerIndex = rIndex;
 				rd = rs2;
 			}else if(rightOp->regType == INT_REG){
-				rs1 = float_reg[lindex];
+				rs1 = float_reg[lIndex];
 				castFindex = get_float_reg();
 				rs2 = float_reg[castFindex];
-				write1("fcvt.s.w %s, %s\n", rs2, int_reg[rindex]);
-				exprNode->registerIndex = lindex;
+				write1("fcvt.s.w %s, %s\n", rs2, int_reg[rIndex]);
+				exprNode->registerIndex = lIndex;
 				rd = rs1;
 			}else{
-				rs1 = float_reg[lindex];
-				rs2 = float_reg[rindex];
-				exprNode->registerIndex = lindex;
+				rs1 = float_reg[lIndex];
+				rs2 = float_reg[rIndex];
+				exprNode->registerIndex = lIndex;
 				rd = rs1;
 			}
 
@@ -689,20 +691,20 @@ void gen_exprNode(AST_NODE* exprNode)
 					printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
 					break;
 			}
-			if(castFindex){
+			if(castFindex != -1){
 				free_float_reg(castFindex);
 			}
 			if(leftOp->regType == INT_REG){
-				free_int_reg(lindex);
+				free_int_reg(lIndex);
 			}else if(rightOp->regType == INT_REG){
-				free_int_reg(rindex);
+				free_int_reg(rIndex);
 			}else{
-				free_float_reg(rindex);
+				free_float_reg(rIndex);
 			}
 		}else{
-			char *rs1 = int_reg[lindex], *rs2 = int_reg[rindex], *rd = int_reg[lindex];
+			char *rs1 = int_reg[lIndex], *rs2 = int_reg[rIndex], *rd = int_reg[lIndex];
 			exprNode->regType = INT_REG;
-			exprNode->registerIndex = lindex;
+			exprNode->registerIndex = lIndex;
 			switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp)
 			{
 				case BINARY_OP_ADD:
@@ -721,7 +723,7 @@ void gen_exprNode(AST_NODE* exprNode)
 					printf("Unhandled case in void evaluateExprValue(AST_NODE* exprNode)\n");
 					break;
 			}
-			free_int_reg(rindex);
+			free_int_reg(rIndex);
 		}
 	}//endif BINARY_OPERATION
 	else if(exprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION)
@@ -777,7 +779,7 @@ void gen_exprNode(AST_NODE* exprNode)
 
 void gen_boolExprNode(AST_NODE* boolExprNode){
 	boolExprNode->regType = INT_REG;
-	char* rd, rs1, rs2;
+	char *rd, *rs1, *rs2;
 	if(boolExprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION){
 		AST_NODE* operand = boolExprNode->child;
 		gen_exprRelatedNode(operand);
@@ -815,36 +817,36 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 		AST_NODE* rightOp = leftOp->rightSibling;
 		gen_exprRelatedNode(leftOp);
 		gen_exprRelatedNode(rightOp);
-		int lindex = leftOp->registerIndex;
-		int rindex = rightOp->registerIndex;
-		char* rd, rs1, rs2;
+		int lIndex = leftOp->registerIndex;
+		int rIndex = rightOp->registerIndex;
+		char *rd, *rs1, *rs2;
 		int bothInt = 0;
 		if(leftOp->regType == rightOp->regType){
 			if(leftOp->regType == INT_REG){
-				boolExprNode->registerIndex = lindex;
-				rd = rs1 = int_reg[lindex];
-				rs2 = int_reg[rindex];
+				boolExprNode->registerIndex = lIndex;
+				rd = rs1 = int_reg[lIndex];
+				rs2 = int_reg[rIndex];
 				bothInt = 1;
 			}else{
 				boolExprNode->registerIndex = get_int_reg();
 				rd = int_reg[boolExprNode->registerIndex];
-				rs1 = float_reg[lindex];
-				rs2 = float_reg[rindex];
+				rs1 = float_reg[lIndex];
+				rs2 = float_reg[rIndex];
 			}
 		}else{
 			castFindex = get_float_reg();
 			if(leftOp->regType == INT_REG){
-				boolExprNode->registerIndex = lindex;
+				boolExprNode->registerIndex = lIndex;
 				rs1 = float_reg[castFindex];
-				write1("fcvt.s.w %s, %s\n", rs1, int_reg[lindex]);
-				rs2 = float_reg[rindex];
-				rd = int_reg[lindex];
+				write1("fcvt.s.w %s, %s\n", rs1, int_reg[lIndex]);
+				rs2 = float_reg[rIndex];
+				rd = int_reg[lIndex];
 			}else{
-				boolExprNode->registerIndex = rindex;
-				rs1 = float_reg[lindex];
+				boolExprNode->registerIndex = rIndex;
+				rs1 = float_reg[lIndex];
 				rs2 = float_reg[castFindex];
-				write1("fcvt.s.w %s, %s\n", rs2, int_reg[rindex]);
-				rd = int_reg[rindex];
+				write1("fcvt.s.w %s, %s\n", rs2, int_reg[rIndex]);
+				rd = int_reg[rIndex];
 			}
 		}
 		switch(boolExprNode->semantic_value.exprSemanticValue.op.binaryOp){
@@ -902,24 +904,24 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 				}
 				break;
 		}
-		if(castIindex){
+		if(castIindex != -1){
 			free_int_reg(castIindex);
 		}
-		if(castFindex){
+		if(castFindex != -1){
 			free_float_reg(castFindex);
 		}
 		if(leftOp->regType == rightOp->regType){
 			if(leftOp->regType == INT_REG){
-				free_int_reg(rindex);
+				free_int_reg(rIndex);
 			}else{
-				free_float_reg(rindex);
-				free_float_reg(lindex);
+				free_float_reg(rIndex);
+				free_float_reg(lIndex);
 			}
 		}else{
 			if(leftOp->regType == INT_REG){
-				free_float_reg(rindex);
+				free_float_reg(rIndex);
 			}else{
-				free_float_reg(lindex);
+				free_float_reg(lIndex);
 			}
 		}
 	}
@@ -1116,7 +1118,7 @@ void gen_functionCallWithoutCatchReturn(AST_NODE* functionCallNode){
 					traverseParameter = traverseParameter->rightSibling;
 				}
 			}
-			write1("jal _start_%s:\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
+			write1("jal _start_%s\n", functionIdNode->semantic_value.identifierSemanticValue.identifierName);
 			if (paramOffset) {
 				write1("addi sp, sp, %d\n", paramOffset);
 			}
