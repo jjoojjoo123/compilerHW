@@ -929,105 +929,47 @@ void gen_boolExprNode(AST_NODE* boolExprNode){
 
 void gen_boolShortCircuitNode(AST_NODE* boolExprNode){
 	//hw6
-	/*int labelNumber = getLabelNumber();
-			char *leftOpRegName, *rightOpRegName;
-
-			if(leftOp->dataType == FLOAT_TYPE || rightOp->dataType == FLOAT_TYPE) {
-				char *exprRegName;
-				exprNode->registerIndex = getRegister(INT_REG);
-				codeGenPrepareRegister(INT_REG, exprNode->registerIndex, 0, 0, &exprRegName);
-				
-				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
-					gen_exprRelatedNode(leftOp);
-					if(leftOp->dataType == INT_TYPE)
-						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);
-					write1("fcmp %s, #0.0\n", leftOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					if(rightOp->dataType == INT_TYPE)
-						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);
-					write1("fcmp %s, #0.0\n", rightOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 1);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 0);
-					write1("_booleanExit%d:\n", labelNumber);
-				} else {
-					codeGenExprRelatedNode(leftOp);
-					if(leftOp->dataType == INT_TYPE)
-						leftOp->registerIndex = codeGenConvertFromIntToFloat(leftOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, leftOp->registerIndex, 1, 1, &leftOpRegName);// need think for isAddr
-					write1("fcmp %s, #0.0\n", leftOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					if(rightOp->dataType == INT_TYPE)
-						rightOp->registerIndex = codeGenConvertFromIntToFloat(rightOp->registerIndex);
-					codeGenPrepareRegister(FLOAT_REG, rightOp->registerIndex, 1, 1, &rightOpRegName);// need think for isAddr
-					write1("fcmp %s, #0.0\n", rightOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 0);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", exprRegName, 1);
-					write1("_booleanExit%d:\n", labelNumber);
-				}
-				//freeRegister(FLOAT_REG, leftOp->registerIndex);
-				//freeRegister(FLOAT_REG, rightOp->registerIndex);
-			} else if (exprNode->dataType == INT_TYPE) {
-				if (expr_bin_op(exprNode) == BINARY_OP_AND) {
-					codeGenExprRelatedNode(leftOp);
-					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-					write1("cmp %s, #0\n", leftOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-					write1("cmp %s, #0\n", rightOpRegName);
-					write1("beq _booleanFalse%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 1);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 0);
-					write1("_booleanExit%d:\n", labelNumber);
-				} else {
-					codeGenExprRelatedNode(leftOp);
-					codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-					write1("cmp %s, #0\n", leftOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					codeGenExprRelatedNode(rightOp);
-					codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-					write1("cmp %s, #0\n", rightOpRegName);
-					write1("bne _booleanTrue%d\n", labelNumber);
-					write1("_booleanFalse%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 0);
-					write1("b _booleanExit%d\n", labelNumber);
-					write1("_booleanTrue%d:\n", labelNumber);
-					write1("mov %s, #%d\n", leftOpRegName, 1);
-					write1("_booleanExit%d:\n", labelNumber);
-				}
-				exprNode->registerIndex = leftOp->registerIndex;
-				freeRegister(INT_REG, rightOp->registerIndex);
-			}*/
-			/*case BINARY_OP_AND:
-				shortCircuitNumber = (labelNumber++);
-				if(bothInt){
-
-				}
-				exprNode->registerIndex = getRegister(INT_REG);
-				codeGenLogicalInstruction(FLOAT_REG, "and", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-				freeRegister(FLOAT_REG, leftOp->registerIndex);
-				break;
-			case BINARY_OP_OR:
-				shortCircuitNumber = (labelNumber++);
-				exprNode->registerIndex = getRegister(INT_REG);
-				codeGenLogicalInstruction(FLOAT_REG, "or", exprNode->registerIndex, leftOp->registerIndex, rightOp->registerIndex);
-				freeRegister(FLOAT_REG, leftOp->registerIndex);
-				break;*/
+	AST_NODE* leftOp = boolExprNode->child;
+	AST_NODE* rightOp = leftOp->rightSibling;
+	int label = (label_number++);
+	gen_test(leftOp);
+	switch(boolExprNode->semantic_value.exprSemanticValue.op.binaryOp){
+		case BINARY_OP_AND:
+			write1("beqz %s, _SZero%d\n", int_reg[leftOp->registerIndex], label);
+			break;
+		case BINARY_OP_OR:
+			write1("bnez %s, _SOne%d\n", int_reg[leftOp->registerIndex], label);
+			break;
+	}
+	free_int_reg(leftOp->registerIndex);
+	gen_test(rightOp);
+	switch(boolExprNode->semantic_value.exprSemanticValue.op.binaryOp){
+		case BINARY_OP_AND:
+			write1("beqz %s, _SZero%d\n", int_reg[rightOp->registerIndex], label);
+			break;
+		case BINARY_OP_OR:
+			write1("bnez %s, _SOne%d\n", int_reg[rightOp->registerIndex], label);
+			break;
+	}
+	free_int_reg(rightOp->registerIndex);
+	int index = get_int_reg();
+	boolExprNode->registerIndex = index;
+	switch(boolExprNode->semantic_value.exprSemanticValue.op.binaryOp){
+		case BINARY_OP_AND:
+			write1("li %s, 1\n", int_reg[index]);
+			write1("j _SExit%d\n", label);
+			write0("_SZero%d:\n", label);
+			write1("li %s, 0\n", int_reg[index]);
+			write0("_SExit%d:\n", label);
+			break;
+		case BINARY_OP_OR:
+			write1("li %s, 0\n", int_reg[index]);
+			write1("j _SExit%d\n", label);
+			write0("_SOne%d:\n", label);
+			write1("li %s, 1\n", int_reg[index]);
+			write0("_SExit%d:\n", label);
+			break;
+	}
 }
 
 void gen_functionCallWithoutCatchReturn(AST_NODE* functionCallNode){
