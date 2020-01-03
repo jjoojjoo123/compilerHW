@@ -371,6 +371,13 @@ void declareIdList(AST_NODE* declarationNode, SymbolAttributeKind isVariableOrTy
                 }
                 else
                 {
+                    processExprRelatedNode(traverseIDList->child);
+                    if(traverseIDList->child->dataType == ERROR_TYPE){
+                        traverseIDList->dataType = ERROR_TYPE;
+                        declarationNode->dataType = ERROR_TYPE;
+                    }else{
+                        traverseIDList->dataType = typeNode->dataType;
+                    }
                     attribute->attr.typeDescriptor = typeNode->semantic_value.identifierSemanticValue.symbolTableEntry->attribute->attr.typeDescriptor;
                 }
                 break;
@@ -428,7 +435,7 @@ void checkForStmt(AST_NODE* forNode)
     AST_NODE* initExpression = forNode->child;
     processGeneralNode(initExpression);
     AST_NODE* conditionExpression = initExpression->rightSibling;
-    processGeneralNode(conditionExpression);
+    checkAssignOrExpr(conditionExpression);
     AST_NODE* loopExpression = conditionExpression->rightSibling;
     processGeneralNode(loopExpression);
     AST_NODE* bodyNode = loopExpression->rightSibling;

@@ -11,7 +11,7 @@ int offsetSet(AST_NODE* node, int nowOffset){
 		//nowOffset = 0;
 		AST_NODE* paramListNode = node->child->rightSibling->rightSibling;
 		AST_NODE* blockNode = paramListNode->rightSibling;
-		//offsetParamList(paramListNode); //hw6
+		offsetParamList(paramListNode); //hw6
 		nowOffset = offsetSet(blockNode, 0);
 		AST_NODE *idNode = node->child->rightSibling;
         idNode->semantic_value.identifierSemanticValue.symbolTableEntry = retrieveSymbol(idNode->semantic_value.identifierSemanticValue.identifierName);
@@ -26,6 +26,14 @@ int offsetSet(AST_NODE* node, int nowOffset){
 		child = child->rightSibling;
 	}
 	return nowOffset;
+}
+
+void offsetParamList(AST_NODE* paramListNode){
+	AST_NODE* paramNode = paramListNode->child;
+	//universally 8
+	for(int i = 16;paramNode;i += 8, paramNode = paramNode->rightSibling){
+		paramNode->child->rightSibling->semantic_value.identifierSemanticValue.symbolTableEntry->offset = i;
+	}
 }
 
 int offsetBlock(AST_NODE* blockNode, int nowOffset){
